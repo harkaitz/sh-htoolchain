@@ -1,0 +1,202 @@
+#!/bin/sh -e
+#L:
+#L:  MIT License
+#L:  
+#l:  Bug reports, feature requests to gemini|https://harkadev.com/oss
+#l:  Copyright (c) 2022 Harkaitz Agirre, harkaitz.aguirre@gmail.com
+#L:
+#L:  Permission is hereby granted, free of charge, to any person obtaining
+#L:  a copy of this software and associated documentation files (the
+#L:  "Software"), to deal in the Software without restriction, including
+#L:  without limitation the rights to use, copy, modify, merge, publish,
+#L:  distribute, sublicense, and/or sell copies of the Software, and to
+#L:  permit persons to whom the Software is furnished to do so, subject to
+#L:  the following conditions:
+#L:
+#L:  The above copyright notice and this permission notice shall be
+#L:  included in all copies or substantial portions of the Software.
+#L:
+#L:  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+#L:  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+#L:  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+#L:  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+#L:  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+#L:  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+#L:  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+#h: Usage: $0 OPTIONS...
+#h:
+#h: Setup a cross C/C++ compilation environment.
+#h:
+#h: ... ld=PROG              : Use this linker.
+#h: ... ldflags=FLAGS        : Linker flags.
+#h: ... cflags=FLAGS         : C/C++ compiler flags.
+#h: ... cppflags=FLAGS       : C/C++ preprocessor flags.
+#h: ... type=gnu/clang       : Compiler type.
+#h: ... prefix=PREFIX        : Default prefix (defaults to /usr/local).
+#h: ... tool_prefix=TPREFIX  : Tool prefix, ie "x86_64-linux-gnu-". 
+#h: ... prefixes="P1 P2 ..." : Dependency search path. 
+#::
+hcross_env_c() {
+
+    local ld=
+    local ldflags= cflags= cppflags=
+    local type=gnu
+    local prefix=
+    local tool_prefix=
+    local path=
+    local prefixes="/usr/local /usr"
+    local p= d= "$@"
+
+    if test -n "${path}";then
+        export PATH="${path}:${PATH}"
+    fi
+    if true;then
+
+        ## Installation directories.
+        if test -n "${HBUILD_DESTDIR}";then
+            export HBUILD_DESTDIR="${HBUILD_DESTDIR}"
+            export HBUILD_PREFIX="${HBUILD_PREFIX:-/usr/local}"
+        else
+            export HBUILD_DESTDIR=
+            export HBUILD_PREFIX="${HBUILD_PREFIX:-${prefix:-/usr/local}}"
+        fi
+        if test -n "${tool_prefix}";then
+            export HBUILD_TOOLCHAIN="`echo "${tool_prefix}" | sed 's|-$||'`"
+        else
+            export HBUILD_TOOLCHAIN="native"
+        fi
+
+        ## Whether to install with sudo.
+        if test   -e "${HBUILD_DESTDIR}${HBUILD_PREFIX}" && \
+           test ! -w "${HBUILD_DESTDIR}${HBUILD_PREFIX}";then
+            export HBUILD_SUDO=sudo
+        else
+            export HBUILD_SUDO=env
+        fi
+        
+        ## Search path.
+        export HBUILD_TOOL_PREFIX="${tool_prefix}"
+        export HBUILD_PREFIXES="${prefixes}"
+
+        ## Add to variable list.
+        HBUILD_VARS="${HBUILD_VARS}
+            HBUILD_DESTDIR   HBUILD_PREFIX        HBUILD_TOOLCHAIN
+            HBUILD_SUDO      HBUILD_TOOL_PREFIX   HBUILD_PREFIXES"
+    fi
+    if true;then
+        ## Compiler.
+        if test @"${type}" = @"gnu";then
+            export CC="${CC:-${tool_prefix}gcc} ${cflags} ${cppflags}"           
+            export CXX="${CXX:-${tool_prefix}g++} ${cflags} ${cppflags}"
+            export CPP="${CPP:-${tool_prefix}cpp} ${cppflags}"
+        elif test @"${type}" = @"clang";then
+            export CC="${CC:-${tool_prefix}clang} ${cflags} ${cppflags}"           
+            export CXX="${CXX:-${tool_prefix}clang++} ${cflags} ${cppflags}"
+            export CPP=""
+        else
+            hlog error "Invalid compiler type: '${type}'."
+            return 1
+        fi
+        ## Configuration.
+        if test -d "${HBUILD_INCLUDE}";then
+            CC="${CC} -I${HBUILD_INCLUDE} -DHAVE_HBUILD"
+            CXX="${CXX} -I${HBUILD_INCLUDE} -DHAVE_HBUILD"
+        fi
+        ## Binutils.
+        export AR="${tool_prefix}ar"           
+        export AS="${tool_prefix}as"
+        export LD="${ld:-${tool_prefix}ld}"            
+        export RANLIB="${tool_prefix}ranlib"
+        export READELF="${tool_prefix}readelf"
+        if which "${tool_prefix}strip" >/dev/null 2>&1;then
+            export STRIP="${tool_prefix}strip"
+        else
+            export STRIP="strip"
+        fi
+        export WINDRES="${tool_prefix}windres"  
+        export OBJCOPY="${tool_prefix}objcopy"
+        export OBJDUMP="${tool_prefix}objdump" 
+        export NM="${tool_prefix}nm"
+        export LDFLAGS="${ldflags}"
+        if test -n "${linker}";then
+            LDFLAGS="${LDFLAGS} -Wl,--dynamic-linker=${linker}"
+        fi
+        HBUILD_VARS="${HBUILD_VARS}
+            CC CXX CPP AR AS LD RANLIB READELF STRIP WINDRES
+            OBJCOPY OBJDUMP NM LDFLAGS"
+    fi
+    if true;then
+        ## Autotools init.
+        export PKG_CONFIG_LIBDIR=""
+        export PKG_CONFIG_PATH=""
+        export LT_SYS_LIBRARY_PATH=""
+        export ACLOCAL_PATH=""
+        local configure=
+        if test -n "${tool_prefix}";then
+            local host="`echo "${tool_prefix}" | sed 's|-$||'`"
+            local configure="${configure} --host=${host}"
+            export CONFIGURE_HOST="${host}"
+        else
+            export CONFIGURE_HOST=
+        fi
+        local configure="${configure} --prefix=${HBUILD_PREFIX} --sysconfdir=${HBUILD_PREFIX}/etc"
+        case "${tool_prefix}" in
+            *mingw*) true;;
+            *)       local configure="${configure} --with-pic";;
+        esac
+        export CONFIGURE_FLAGS="${configure}"
+        HBUILD_VARS="${HBUILD_VARS}
+            PKG_CONFIG_LIBDIR   PKG_CONFIG_PATH   LT_SYS_LIBRARY_PATH
+            ACLOCAL_PATH        CONFIGURE_HOST    CONFIGURE_FLAGS"
+    fi
+    for p in ${prefixes};do
+        ## Skip prefixes that do not exist.
+        if test ! -d "${p}";then continue;fi
+        ## pkgconfig.
+        for d in lib/pkgconfig lib64/pkgconfig libdata/pkgconfig share/pkgconfig;do
+            if test ! -d "${p}/${d}";then
+                true
+            elif test -n "${tool_prefix}";then
+                PKG_CONFIG_LIBDIR="${PKG_CONFIG_LIBDIR:+${PKG_CONFIG_LIBDIR}:}${p}/${d}"
+            else
+                PKG_CONFIG_PATH="${PKG_CONFIG_PATH:+${PKG_CONFIG_PATH}:}${p}/${d}"
+            fi
+        done
+        ## autotools.
+        if test -d "${p}/lib";then
+            LT_SYS_LIBRARY_PATH="${LT_SYS_LIBRARY_PATH:+${LT_SYS_LIBRARY_PATH}:}${p}/lib"
+        fi
+        if test -d "${p}/share/aclocal";then
+            ACLOCAL_PATH="${ACLOCAL_PATH:+${ACLOCAL_PATH}:}${p}/share/aclocal"
+        fi
+        ## Add include flags.
+        if test -d "${p}/include" && test ! -f "${p}/include/stdio.h";then
+            CC="${CC} -isystem ${p}/include"
+            if test -n "${CPP}";then
+                CPP="${CPP} -isystem ${p}/include"
+            fi
+        fi
+        ## Add library flags.
+        if test -d "${p}/lib";then
+            case "${type}" in
+                clang) LDFLAGS="${LDFLAGS} -L${p}/lib"                     ;;
+                gnu)   LDFLAGS="${LDFLAGS} -Wl,-rpath,${p}/lib -L${p}/lib" ;;
+            esac
+        fi
+    done
+}
+
+## -----------------------------------------------------------------------------
+SCRNAME="`basename "$0"`"
+if test @"${SCRNAME}" = @"hcross-env-c";then
+    case "${1}" in
+        ''|-h|--help)
+            sed -n 's/^ *#h: \{0,1\}//p' "$0" | sed "s|\\\$0|${SCRNAME}|g"
+            echo ""
+            sed -n 's/^ *#l: \{0,2\}//p' "$0"
+            ;;
+        *)
+            hcross_env_c "$@"
+            ;;
+    esac
+fi
