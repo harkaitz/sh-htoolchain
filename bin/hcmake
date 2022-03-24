@@ -1,0 +1,223 @@
+#!/bin/sh -e
+#L:
+#l:  Copyright (c) 2018 Openvirtus.com, http://openvirtus.com
+#L:
+#L:  Permission is hereby granted, free of charge, to any person obtaining
+#L:  a copy of this software and associated documentation files (the
+#L:  "Software"), to deal in the Software without restriction, including
+#L:  without limitation the rights to use, copy, modify, merge, publish,
+#L:  distribute, sublicense, and/or sell copies of the Software, and to
+#L:  permit persons to whom the Software is furnished to do so, subject to
+#L:  the following conditions:
+#L:
+#L:  The above copyright notice and this permission notice shall be
+#L:  included in all copies or substantial portions of the Software.
+#L:
+#L:  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+#L:  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+#L:  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+#L:  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+#L:  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+#L:  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+#L:  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+#L:
+#h: Usage: $0 ...
+#h:
+#h: ... show                     : Show cmake variables.
+#h: ... toolchain                : Print the toolchain file.
+#h: ... clean                    : Remove build directory.
+#h: ... configure CMAKE-ARGS ... : Execute `cmake`.
+#h: ... build      MAKE-ARGS ... : Execute `make`.
+#h: ... install    MAKE-ARGS ... : Execute `make install`.
+#h: ... all       CMAKE-ARGS ... : Execute all above.
+. hlog
+. vrun
+. vcd
+. hterm
+. hmain
+hcmake() {
+    hcmake_calc_variables
+    local cmd="$1"
+    shift
+    case "${cmd}" in
+        show)      hcmake_show_variables ;;
+        toolchain) hcmake_toolchain      ;;
+        clean)     hcmake_clean          ;;
+        configure) hcmake_configure "$@" ;;
+        build)     hcmake_build     "$@" ;;
+        install)   hcmake_install   "$@" ;;
+        all)       hcmake_clean; hcmake_configure "$@"; hcmake_build; hcmake_install;;
+        *)         hlog error "Invalid argument ${cmd}."; return 1;;
+    esac
+}
+hcmake_show_variables() {
+    hterm vars             \
+          -                \
+          NPROC            \
+          HBUILD_SUDO      \
+          HBUILD_DESTDIR   \
+          HBUILD_PREFIX    \
+          HBUILD_TOOLCHAIN \
+          -                \
+          HCMAKE_BUILD_DIR \
+          ${HCMAKE_VARS}   \
+          -
+}
+hcmake_calc_variables() {
+    HCMAKE_BUILD_DIR="${HCMAKE_BUILD_DIR:-build-${HBUILD_TOOLCHAIN:-native}}"
+    if test -n "${HCMAKE_SKIP}";then
+        return 0
+    fi
+    HCMAKE_VARS=
+    if true;then
+        case "${HBUILD_TOOLCHAIN}" in
+            native|'') export CMAKE_CROSSCOMPILING="false";;
+            *)         export CMAKE_CROSSCOMPILING="true" ;;
+        esac
+        export CMAKE_INSTALL_PREFIX="${HBUILD_DESTDIR}${HBUILD_PREFIX:-/usr/local}"
+        export CMAKE_STAGING_PREFIX="${HBUILD_DESTDIR}${HBUILD_PREFIX:-/usr/local}"
+        export CMAKE_RUNTIME_PREFIX="${HBUILD_PREFIX:-/usr/local}"
+        HCMAKE_VARS="${HCMAKE_VARS} -
+            CMAKE_CROSSCOMPILING CMAKE_INSTALL_PREFIX
+            CMAKE_STAGING_PREFIX CMAKE_RUNTIME_PREFIX"
+    fi
+    if true;then
+        local cc="`        echo "${CC:-gcc}"  | sed    's| .*||'       `"
+        local cxx="`       echo "${CXX:-g++}" | sed    's| .*||'       `"
+        local ld="`        echo "${LD:-ld}"   | sed    's| .*||'       `"
+        local cc_flags="`  echo "${CC:-gcc}"  | sed -n 's|^[^ ]* *||p' `"
+        local cxx_flags="` echo "${CXX:-g++}" | sed -n 's|^[^ ]* *||p' `"
+        local ld_flags="`  echo "${LD:-ld}"   | sed -n 's|^[^ ]* *||p' `"
+        export CMAKE_C_COMPILER="`   which ${cc}  2>/dev/null || echo "${cc}"  `"
+        export CMAKE_CXX_COMPILER="` which ${cxx} 2>/dev/null || echo "${cxx}" `"
+        export CMAKE_C_LINKER="`     which ${ld}  2>/dev/null || echo "${ld}"  `"
+        export CMAKE_CXX_LINKER="`   which ${ld}  2>/dev/null || echo "${ld}"  `"
+        export CMAKE_C_FLAGS="${cc_flags} ${CPPFLAGS} ${CFLAGS}"
+        export CMAKE_CXX_FLAGS="${cxx_flags} ${CPPFLAGS} ${CXXFLAGS}"
+        export CMAKE_EXE_LINKER_FLAGS="${ld_flags} ${LDFLAGS}"
+        export CMAKE_SHARED_LINKER_FLAGS="${ld_flags} ${LDFLAGS}"
+        #export CMAKE_C_COMPILER_WORKS=1
+        HCMAKE_VARS="${HCMAKE_VARS} -
+            CMAKE_C_COMPILER   CMAKE_CXX_COMPILER
+            CMAKE_C_LINKER     CMAKE_CXX_LINKER
+            CMAKE_C_FLAGS      CMAKE_CXX_FLAGS
+            CMAKE_EXE_LINKER_FLAGS
+            CMAKE_SHARED_LINKER_FLAGS
+            "
+        case "${HBUILD_TOOLCHAIN}" in
+            native)
+                true
+                ;;
+            *mingw*)
+                export CMAKE_RC_COMPILER="${WINDRES}"
+                export CMAKE_RC_FLAGS="-DGCC_WINDRES"
+                export CMAKE_POSITION_INDEPENDENT_CODE="TRUE"
+                HCMAKE_VARS="${HCMAKE_VARS}
+                    CMAKE_RC_COMPILER
+                    CMAKE_RC_FLAGS
+                    CMAKE_POSITION_INDEPENDENT_CODE"
+                ;;
+            *)
+                export CMAKE_POSITION_INDEPENDENT_CODE="TRUE"
+                HCMAKE_VARS="${HCMAKE_VARS} CMAKE_POSITION_INDEPENDENT_CODE" 
+                ;;
+        esac
+    fi
+    if true;then
+        case "${HBUILD_TOOLCHAIN}" in
+            arm*android*)     export CMAKE_SYSTEM_PROCESSOR="armv7-a"    ;;
+            arm*)             export CMAKE_SYSTEM_PROCESSOR="arm"        ;;
+            x86_64*)          export CMAKE_SYSTEM_PROCESSOR="x86_64"     ;;
+            native|'')        export CMAKE_SYSTEM_PROCESSOR="`uname -m`" ;;
+        esac
+        case "${HBUILD_TOOLCHAIN}" in
+            *mingw32*)        export CMAKE_EXECUTABLE_SUFFIX_C='.exe'  ;;
+            *)                export CMAKE_EXECUTABLE_SUFFIX_C=''      ;;
+        esac
+        case "${HBUILD_TOOLCHAIN}" in
+            *android*)        export CMAKE_SYSTEM_NAME="Android" CMAKE_SYSTEM_VERSION="1";;
+            *linux*)          export CMAKE_SYSTEM_NAME="Linux"   ;;
+            *mingw*)          export CMAKE_SYSTEM_NAME="Windows" ;;
+            *macos*|*darwin*) export CMAKE_SYSTEM_NAME="Darwin"  ;;
+            *freebsd*)        export CMAKE_SYSTEM_NAME="FreeBSD"  ;;
+        esac
+        case "${HBUILD_TOOLCHAIN}" in
+            native) true;;
+            *)      HCMAKE_VARS="${HCMAKE_VARS} -
+                        CMAKE_SYSTEM_PROCESSOR
+                        CMAKE_EXECUTABLE_SUFFIX_C
+                        CMAKE_SYSTEM_NAME
+                        CMAKE_SYSTEM_VERSION";;
+        esac
+    fi
+    if true;then
+        export CMAKE_FIND_ROOT_PATH_MODE_PROGRAM="NEVER"
+        export CMAKE_FIND_ROOT_PATH_MODE_LIBRARY="ONLY"
+        export CMAKE_FIND_ROOT_PATH_MODE_INCLUDE="ONLY"
+        export CMAKE_FIND_ROOT_PATH_MODE_PACKAGE="ONLY"
+        HCMAKE_VARS="${HCMAKE_VARS} -
+            CMAKE_FIND_ROOT_PATH_MODE_PROGRAM
+            CMAKE_FIND_ROOT_PATH_MODE_LIBRARY
+            CMAKE_FIND_ROOT_PATH_MODE_INCLUDE
+            CMAKE_FIND_ROOT_PATH_MODE_PACKAGE"
+    fi
+    if true;then
+        export CMAKE_PREFIX_PATH=
+        export CMAKE_IGNORE_PATH=
+        local p=
+        for p in ${HBUILD_PREFIXES:-/usr/local /usr};do
+            CMAKE_PREFIX_PATH="${CMAKE_PREFIX_PATH:+${CMAKE_PREFIX_PATH};}${p}"
+        done
+        HCMAKE_VARS="${HCMAKE_VARS} - CMAKE_PREFIX_PATH CMAKE_IGNORE_PATH"
+    fi
+    export HCMAKE_SKIP=y
+}
+## -----------------------------------------------------------------------------
+hcmake_toolchain() {
+    for v in ${HCMAKE_VARS};do
+        case "${v}" in -) echo ""; continue;; esac
+        eval "printf 'set(%s \"%s\")\\n' '${v}' \"\${${v}}\""
+    done
+}
+hcmake_clean() {
+    vrun rm -rf -- "${HCMAKE_BUILD_DIR}"
+}
+hcmake_configure() {
+    vrun mkdir -p -- "${HCMAKE_BUILD_DIR}"
+    hcmake_toolchain > "${HCMAKE_BUILD_DIR}/toolchain.cmake"
+    vcd + "${HCMAKE_BUILD_DIR}"
+    vrun env LANG=C                                        \
+         cmake -Wno-dev ..                                 \
+         -DCMAKE_MAKE_PROGRAM="`which make`"               \
+         -DCMAKE_TOOLCHAIN_FILE="`pwd`/toolchain.cmake"    \
+         -DCMAKE_INSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}"  \
+         -DCMAKE_STAGING_PREFIX="${CMAKE_STAGING_PREFIX}"  \
+         "$@"
+    vcd - ..
+}
+hcmake_build() {
+    vcd + "${HCMAKE_BUILD_DIR}"
+    if test -f Makefile;then
+        vrun env LANG=C make -j"${NPROC:-`nproc`}" VERBOSE=1 "$@"
+    elif test -f build.ninja;then
+        vrun ninja
+    else
+        hlog error "Unknown build system."
+        return 1
+    fi
+    vcd - ..
+}
+hcmake_install() {
+    vcd + "${HCMAKE_BUILD_DIR}"
+    if test -f Makefile;then
+        vrun ${HBUILD_SUDO:-env} LANG=C make VERBOSE=1 install
+    elif test -f build.ninja;then
+        vrun ${HBUILD_SUDO:-env} LANG=C ninja install
+    else
+        hlog error "Unknown build system."
+        return 1
+    fi
+    vcd - ..
+}
+## -----------------------------------------------------------------------------
+hmain -f "hcmake" hcmake "$@"

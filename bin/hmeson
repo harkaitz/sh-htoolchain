@@ -1,0 +1,178 @@
+#!/bin/sh -e
+#L:
+#l:  Copyright (c) 2018 Openvirtus.com, http://openvirtus.com
+#L:
+#L:  Permission is hereby granted, free of charge, to any person obtaining
+#L:  a copy of this software and associated documentation files (the
+#L:  "Software"), to deal in the Software without restriction, including
+#L:  without limitation the rights to use, copy, modify, merge, publish,
+#L:  distribute, sublicense, and/or sell copies of the Software, and to
+#L:  permit persons to whom the Software is furnished to do so, subject to
+#L:  the following conditions:
+#L:
+#L:  The above copyright notice and this permission notice shall be
+#L:  included in all copies or substantial portions of the Software.
+#L:
+#L:  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+#L:  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+#L:  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+#L:  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+#L:  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+#L:  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+#L:  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+#L:
+#h: Usage: $0 ...
+#h:
+#h: ... show          : Show meson variables.
+#h: ... toolchain.txt : Print the toolchain file.
+#h:
+#h: ... clean                    : Remove build directory.
+#h: ... configure MESON-ARGS ... : Execute meson.
+#h: ... build     NINJA-ARGS ... : Execute ninja to build.
+#h: ... install   NINJA-ARGS ... : Execute ninja to install.
+#h:
+#h: ... all : Clean, configure, build, install.
+hmeson() {
+    local cmd="$1"
+    shift
+    case "${cmd}" in
+        show)          hmeson_show_variables  ;;
+        toolchain.txt) hmeson_print_toolchain ;;
+        clean)         hmeson_clean           ;;
+        configure)     hmeson_configure "$@"  ;;
+        build)         hmeson_build     "$@"  ;;
+        install)       hmeson_install   "$@"  ;;
+        all) hmeson_clean
+             hmeson_configure "$@"
+             hmeson_build
+             hmeson_install
+             ;;
+        *)   hmeson_error "Invalid argument ${cmd}."
+             return 1
+             ;;
+    esac
+}
+hmeson_print_toolchain() {
+    ## Split compiler and flags.
+    local cc="`        echo "${CC:-gcc}"  | sed    's| .*||'       `"
+    local cxx="`       echo "${CXX:-g++}" | sed    's| .*||'       `"
+    local ld="`        echo "${LD:-ld}"   | sed    's| .*||'       `"
+    local cc_flags="`  echo "${CC:-gcc}"  | sed -n 's|^[^ ]* *||p' `"
+    local cxx_flags="` echo "${CXX:-g++}" | sed -n 's|^[^ ]* *||p' `"
+    local ld_flags="`  echo "${LD:-ld}"   | sed -n 's|^[^ ]* *||p' `"
+    ## Options.
+    printf '[options]\n'
+    printf '%-10s = [%s]\n' c_args        "`hmeson_escape ${cc_flags}  ${CPPFLAGS} ${CFLAGS}`"
+    printf '%-10s = [%s]\n' cpp_args      "`hmeson_escape ${cxx_flags} ${CPPFLAGS} ${CXXFLAGS}`"
+    printf '%-10s = [%s]\n' c_link_args   "`hmeson_escape ${ld_flags}  ${LDFLAGS}`"
+    printf '%-10s = [%s]\n' cpp_link_args "`hmeson_escape ${ld_flags}  ${LDFLAGS}`"
+    case "${HBUILD_TOOLCHAIN:-native}" in
+        *mingw*) printf "%-10s = '%s'\\n" name_suffix ".exe";;
+    esac
+    printf '\n'
+    printf '\n'
+    ## Binaries.
+    printf '[binaries]\n'
+    printf "%-10s = '%s'\\n" c          "`which ${cc}           `"
+    printf "%-10s = '%s'\\n" cpp        "`which ${cxx}          `"
+    printf "%-10s = '%s'\\n" ar         "`which ${AR:-ar}       `"
+    printf "%-10s = '%s'\\n" strip      "`which ${STRIP:-strip} `"
+    #printf "%-10s = '%s'\\n" c_link_flavor gold
+    #printf "%-10s = '%s'\\n" c_ld       "`which ${ld}`"
+    #printf "%-10s = '%s'\\n" cpp_ld     "`which ${ld}`"
+    printf "%-10s = '%s'\\n" c_ld       "gold"
+    printf "%-10s = '%s'\\n" cpp_ld     "gold"
+    printf "%-10s = '%s'\\n" pkgconfig "`which pkg-config`"
+    #printf "%-10s = '%s'\\n" pkg_config_libdir "${PKG_CONFIG_LIBDIR}${PKG_CONFIG_PATH}"
+    case "${HBUILD_TOOLCHAIN:-native}" in
+        *mingw32*)
+            printf "%-10s = '%s'\n" windres      "${WINDRES:-windres}"
+            printf "%-10s = [%s]\n" windres_args "`hmeson_escape -DGCC_WINDRES`"
+            ;;
+        x86_64-linux-gnu)
+            printf "%-10s = '%s'\n" llvm-config "/usr/bin/llvm-config-6.0"
+            ;;
+    esac
+    printf '\n'
+    printf '\n'
+    ## Platform.
+    printf '[host_machine]\n'
+    case "${HBUILD_TOOLCHAIN:-native}" in
+        *linux*) printf "%-10s = '%s'\\n" system "linux";;
+        *mingw*) printf "%-10s = '%s'\\n" system "windows";;
+    esac
+    case "${HBUILD_TOOLCHAIN:-native}" in
+        arm*)     printf "%-10s = '%s'\\n" cpu_family "arm"
+                  printf "%-10s = '%s'\\n" cpu        "arm"
+                  printf "%-10s = '%s'\\n" endian     "little"
+                  ;;
+        aarch64*) printf "%-10s = '%s'\\n" cpu_family "aarch64"
+                  printf "%-10s = '%s'\\n" cpu        "aarch64"
+                  printf "%-10s = '%s'\\n" endian     "little"
+                  ;;
+        x86_64*)  printf "%-10s = '%s'\\n" cpu_family "x86_64"
+                  printf "%-10s = '%s'\\n" cpu        "x86_64"
+                  printf "%-10s = '%s'\\n" endian     "little"
+                  ;;          
+    esac
+}
+hmeson_clean() {
+    rm -rf "build"
+}
+hmeson_configure() {
+    if test -n "${HBUILD_DESTDIR}";then
+        hmeson_error "Unsupported HBUILD_DESTDIR."
+        return 1
+    fi
+    mkdir -p "build"
+    hmeson_print_toolchain > "build/toolchain.txt"
+    sh -c "
+    unset CFLAGS LDFLAGS CPPFLAGS CC
+    export LANG=C
+    meson                                        \\
+        --prefix '${HBUILD_PREFIX:-/usr/local}'  \\
+        --cross-file '`pwd`/build/toolchain.txt' \\
+        $*                                       \\
+        build
+    "
+}
+hmeson_build() {
+    env LANG=C ninja -j "${NPROC:-`nproc`}" -v -C build "$@"
+}
+hmeson_install() {
+    ${HBUILD_SUDO:-env} LANG=C ninja -v -C build install "$@"
+}
+hmeson_escape() {
+    local ret="" arg=""
+    for arg in "$@";do
+        local ret="${ret}${ret:+, }'`echo "${arg}" | sed "s|'|'\\\\\\''|g"`'"
+    done
+    printf '%s\n' "${ret}"
+}
+
+## -----------------------------------------------------------------------------
+
+## -----------------------------------------------------------------------------
+hmeson_log()   { echo "${SCRNAME}: $*" >&2; }
+hmeson_error() { hmeson_log "error: $*";    }
+SCRNAME="`basename "$0"`"
+if test @"${SCRNAME}" = @"hmeson";then
+    case "${1}" in
+        ''|-h|--help)
+            sed -n 's/^ *#h: \{0,1\}//p' "$0" | sed "s|\\\$0|${SCRNAME}|g"
+            echo ""
+            sed -n 's/^ *#l: \{0,2\}//p' "$0"
+            ;;
+        *)
+            hmeson "$@"
+            ;;
+    esac
+fi
+notes() {
+    CFLAGS="${CFLAGS} -fuse-ld=gold"
+    CXXFLAGS="${CXXFLAGS} -fuse-ld=gold"
+    if test @"${HPKG_TARGET_BUILD}" = @"x86_64-linux-gnu";then
+        LDFLAGS="${LDFLAGS} -Wl,--no-warn-section-align"
+    fi
+    export PKG_CONFIG="`which pkg-config`"
+}

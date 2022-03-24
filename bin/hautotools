@@ -1,0 +1,149 @@
+#!/bin/sh -e
+#L:
+#l:  Copyright (c) 2018 Openvirtus.com, http://openvirtus.com
+#L:
+#L:  Permission is hereby granted, free of charge, to any person obtaining
+#L:  a copy of this software and associated documentation files (the
+#L:  "Software"), to deal in the Software without restriction, including
+#L:  without limitation the rights to use, copy, modify, merge, publish,
+#L:  distribute, sublicense, and/or sell copies of the Software, and to
+#L:  permit persons to whom the Software is furnished to do so, subject to
+#L:  the following conditions:
+#L:
+#L:  The above copyright notice and this permission notice shall be
+#L:  included in all copies or substantial portions of the Software.
+#L:
+#L:  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+#L:  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+#L:  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+#L:  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+#L:  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+#L:  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+#L:  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+#L:
+#h: Usage: $0 ...
+#h:
+#h: A wrapper around GNU Autotools projects.
+#h:
+#h: ... show              : Show configuration.
+#h: ... autogen           : Execute './autogen.sh' if it exists, otherwise 'autoreconf -fi'.
+#h: ... all CARGS...      : clean, configure, make, make install.
+#h: ... clean             : Execute `make clean`.
+#h: ... configure ARGS... : Execute the `./configure ...` step.
+#h: ... make              : Execute `make ...`.
+#h: ... install           : Execute `make install ...`.
+hautotools() {
+    local cmd="$1"
+    shift
+    case "${cmd}" in
+        show)          hautotools_show_variables ;;
+        autogen)       hautotools_autogen        ;;
+        clean)         hautotools_clean          ;;
+        configure|run) hautotools_run     "$@"   ;;
+        make)          hautotools_make    "$@"   ;;
+        install)       hautotools_install "$@"   ;;
+        all)           hautotools_clean
+                       hautotools_run "$@"
+                       hautotools_make
+                       hautotools_install;;
+        *)             hautotools_log "error: Invalid subcommand: ${cmd}" >&2
+                       return 1;;
+    esac
+}
+## -----------------------------------------------------------------------------
+hautotools_show_variables() {
+    hterm vars            \
+          -               \
+          HBUILD_PREFIX   \
+          HBUILD_DESTDIR  \
+          HBUILD_SUDO     \
+          -               \
+          MAKE            \
+          CONFIGURE       \
+          CONFIGURE_HOST  \
+          CONFIGURE_FLAGS \
+          -               \
+          CC CXX AR LD    \
+          -               \
+          CFLAGS CXXFLAGS CPPFLAGS LDFLAGS \
+          -
+}
+hautotools_autogen() {
+    if test -f "autogen.sh";then
+        hautotools_vrun sh -e "autogen.sh"
+    elif test -f configure.ac;then
+        hautotools_vrun autoreconf -fi
+    elif test -f configure;then
+        true
+    else
+        hautotools_log "Do not know how to create ./configure."
+        return 1
+    fi
+}
+hautotools_run() {
+    local flags="" has_prefix= has_host= arg=
+    for arg in "$@";do
+        case "${arg}" in
+            --prefix=*) local has_prefix=y ;;
+            --host=*)   local has_host=y   ;;
+        esac
+    done
+    if test ! -n "${has_prefix}";then
+        local flags="${flags} --prefix=${HBUILD_PREFIX:-/usr/local}"
+    fi
+    if test ! -n "${has_host}" && test -n "${CONFIGURE_HOST}";then
+        local flags="${flags} --host=${CONFIGURE_HOST}"
+    fi
+    local ldflags="`printf '%s\n' "${LDFLAGS}" | sed '
+    s|-Wl,-rpath,|-rpath |g
+    '`" # Libtool needs this.
+    hautotools_vrun                                          \
+        env                                                  \
+        CC="${CC:-gcc} ${CFLAGS} ${CPPFLAGS} ${LDFLAGS}"     \
+        CXX="${CXX:-g++} ${CXXFLAGS} ${CPPFLAGS} ${LDFLAGS}" \
+        AR="${AR:-ar}"                                       \
+        LD="${LD:-ld} ${ldflags}"                            \
+        CFLAGS="" CXXFLAGS="" CPPFLAGS="" LDFLAGS=""         \
+        "${CONFIGURE:-./configure}"                          \
+        ${flags}                                             \
+        ${CONFIGURE_FLAGS}                                   \
+        "$@"
+}
+hautotools_clean() {
+    hautotools_log "${MAKE:-make} distclean"
+    env ${MAKE:-make} distclean >/dev/null 2>&1 || true
+}
+hautotools_make() {
+    hautotools_vrun   \
+        env           \
+        ${MAKE:-make} \
+        V=1           \
+        "$@"
+}
+hautotools_install() {
+    hautotools_vrun                     \
+        ${HBUILD_SUDO:-env}             \
+        ${MAKE:-make}                   \
+        ${MAKE_INSTALL_TARGET:-install} \
+        V=1                             \
+        DESTDIR="${HBUILD_DESTDIR}"     \
+        "$@"
+}
+hautotools_log()  { echo "${SCRNAME}: $*" >&2; }
+hautotools_vrun() { hautotools_log "$*"; "$@"; }
+
+
+## -----------------------------------------------------------------------------
+SCRNAME="`basename "$0"`"
+if test @"${SCRNAME}" = @"hautotools";then
+    case "${1}" in
+        ''|-h|--help)
+            sed -n 's/^ *#h: \{0,1\}//p' "$0" | sed "s|\\\$0|${SCRNAME}|g"
+            echo ""
+            sed -n 's/^ *#l: \{0,2\}//p' "$0"
+            ;;
+        *)
+            hautotools "$@"
+            ;;
+    esac
+fi

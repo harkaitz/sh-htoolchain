@@ -33,7 +33,7 @@
 #h: -w           : Run command by `build_{CMD}`
 hcross() {
     local old_env="`export -p`"
-    local old_vars="${HBUILD_VARS}" var=
+    local old_vars="${HBUILD_VARS}" var= line=
     local toolchain="${HBUILD_TOOLCHAIN}"
     HBUILD_VARS= HBUILD_TOOLCHAIN=
     ## Parse command line options.
@@ -69,12 +69,20 @@ hcross() {
     
     ## Execute in the changed environment.
     case "${1}" in
-        ''|show) for var in ${HBUILD_VARS};do
-                     eval 'printf "%-20s : %s\\n" "${var}" "${'"${var}"'}"'
-                 done;;
+        ''|show)
+            for var in ${HBUILD_VARS};do
+                eval 'printf "%-20s : %s\\n" "${var}" "${'"${var}"'}"'
+            done;;
+        list)
+            printf '%s\n' "${PATH}" | tr ':' '\n' | while read line;do
+                if test -d "${line}";then
+                    ls "${line}"
+                fi
+            done | sed -n 's|-env$||p'
+            ;;
         *)
             if test -n "${wrap}";then
-                local cmd="build_${1}"; shift
+                local cmd="build_`echo "${1}" | tr '-' '_' | tr '/' '_'`"; shift
                 "${cmd}" "$@"
             else
                 "$@"

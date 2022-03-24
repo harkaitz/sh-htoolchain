@@ -39,7 +39,7 @@
 hcross_env_c() {
 
     local ld=
-    local ldflags= cflags= cppflags=
+    local ldflags= cflags= cppflags= libs=
     local type=gnu
     local prefix=
     local tool_prefix=
@@ -86,13 +86,13 @@ hcross_env_c() {
     if true;then
         ## Compiler.
         if test @"${type}" = @"gnu";then
-            export CC="${CC:-${tool_prefix}gcc} ${cflags} ${cppflags}"           
-            export CXX="${CXX:-${tool_prefix}g++} ${cflags} ${cppflags}"
-            export CPP="${CPP:-${tool_prefix}cpp} ${cppflags}"
+            export CC="${tool_prefix}gcc ${cflags} ${cppflags}"           
+            export CXX="${tool_prefix}g++ ${cflags} ${cppflags}"
+            export CPP="${tool_prefix}cpp ${cppflags}"
         elif test @"${type}" = @"clang";then
-            export CC="${CC:-${tool_prefix}clang} ${cflags} ${cppflags}"           
-            export CXX="${CXX:-${tool_prefix}clang++} ${cflags} ${cppflags}"
-            export CPP=""
+            export CC="${tool_prefix}clang ${cflags} ${cppflags}"           
+            export CXX="${tool_prefix}clang++ ${cflags} ${cppflags}"
+            export CPP="${tool_prefix}clang -E ${cflags} ${cppflags}"
         else
             hlog error "Invalid compiler type: '${type}'."
             return 1
@@ -126,7 +126,7 @@ hcross_env_c() {
             OBJCOPY OBJDUMP NM LDFLAGS"
     fi
     if true;then
-        ## Autotools init.
+        export HBUILD_PREFIXES="${prefixes}"
         export PKG_CONFIG_LIBDIR=""
         export PKG_CONFIG_PATH=""
         export LT_SYS_LIBRARY_PATH=""
@@ -146,9 +146,11 @@ hcross_env_c() {
         esac
         export CONFIGURE_FLAGS="${configure}"
         HBUILD_VARS="${HBUILD_VARS}
+            HBUILD_PREFIXES
             PKG_CONFIG_LIBDIR   PKG_CONFIG_PATH   LT_SYS_LIBRARY_PATH
             ACLOCAL_PATH        CONFIGURE_HOST    CONFIGURE_FLAGS"
     fi
+    
     for p in ${prefixes};do
         ## Skip prefixes that do not exist.
         if test ! -d "${p}";then continue;fi
@@ -169,20 +171,22 @@ hcross_env_c() {
         if test -d "${p}/share/aclocal";then
             ACLOCAL_PATH="${ACLOCAL_PATH:+${ACLOCAL_PATH}:}${p}/share/aclocal"
         fi
-        ## Add include flags.
-        if test -d "${p}/include" && test ! -f "${p}/include/stdio.h";then
-            CC="${CC} -isystem ${p}/include"
-            if test -n "${CPP}";then
-                CPP="${CPP} -isystem ${p}/include"
+        ## Add include/library flags.
+        if test ! -f "${p}/include/stdio.h" ;then
+            if test -d "${p}/include";then
+                CC="${CC} -isystem ${p}/include"
+                if test -n "${CPP}";then
+                    CPP="${CPP} -isystem ${p}/include"
+                fi
+            fi
+            if test -d "${p}/lib";then
+                case "${type}" in
+                    clang) LDFLAGS="${LDFLAGS} -L${p}/lib"                     ;;
+                    gnu)   LDFLAGS="${LDFLAGS} -Wl,-rpath,${p}/lib -L${p}/lib" ;;
+                esac
             fi
         fi
-        ## Add library flags.
-        if test -d "${p}/lib";then
-            case "${type}" in
-                clang) LDFLAGS="${LDFLAGS} -L${p}/lib"                     ;;
-                gnu)   LDFLAGS="${LDFLAGS} -Wl,-rpath,${p}/lib -L${p}/lib" ;;
-            esac
-        fi
+        
     done
 }
 

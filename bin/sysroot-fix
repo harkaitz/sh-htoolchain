@@ -1,0 +1,110 @@
+#!/bin/sh -e
+#L:
+#L:  This software is free to use and modify, but not free to maintain.
+#L:
+#l:  Donate bitcoin: 1C1ZzDje7vHhF23mxqfcACE8QD4nqxywiV
+#l:  Copyright (c) 2018 Openvirtus.com, http://openvirtus.com
+#L:
+#L:  Permission is hereby granted, free of charge, to any person obtaining
+#L:  a copy of this software and associated documentation files (the
+#L:  "Software"), to deal in the Software without restriction, including
+#L:  without limitation the rights to use, copy, modify, merge, publish,
+#L:  distribute, sublicense, and/or sell copies of the Software, and to
+#L:  permit persons to whom the Software is furnished to do so, subject to
+#L:  the following conditions:
+#L:
+#L:  The above copyright notice and this permission notice shall be
+#L:  included in all copies or substantial portions of the Software.
+#L:
+#L:  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+#L:  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+#L:  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+#L:  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+#L:  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+#L:  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+#L:  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+#L:
+#r: ## SYSROOT-FIX
+#r:
+#h: Usage: $0 -lkp DIRECTORY...
+#h:
+#h: -l : Fix links in directory.
+#h: -p : Fix permissions.
+#h: -k : Fix pkgconfig.
+sysroot_fix() {
+    local dir=
+    case "${1}" in
+        -*) local ops="${1}"; shift;;
+        *)  local ops=;;
+    esac
+    for dir in "$@";do
+        sysroot_fix_check_directory "${dir}"
+        case "${ops}" in -*l*|-*a*) sysroot_fix_links       "${dir}";; esac
+        case "${ops}" in -*k*|-*a*) sysroot_fix_pkgconfig   "${dir}";; esac
+        case "${ops}" in -*p*|-*a*) sysroot_fix_permissions "${dir}";; esac
+    done
+}
+## -----------------------------------------------------------------------------
+sysroot_fix_check_directory() {
+    local directory="$1"
+    if test ! -d "${directory}";then
+        echo "${SCRNAME}: error: Please specify a directory: ${directory}." >&2
+        return 1
+    elif test @"${directory}" = @"/"          ||
+         test @"${directory}" = @"/usr"       ||
+         test @"${directory}" = @"/usr/local";then
+        echo "${SCRNAME}: error: Refusing to fix ${directory}." >&2
+        return 1
+    elif test ! -w "${directory}";then
+        echo "${SCRNAME}: error: No permissions to write on ${directory}." >&2
+        return 1
+    fi
+}
+sysroot_fix_links() {
+    local d="$1" link= file=
+    find "${d}" -type l | while read link;do
+        local file="`readlink "${link}"`"
+        case "${file}" in
+            /lib/*|/usr/*)
+                echo "${SCRNAME}: Fixing link ${link} ..."
+                rm -f "${link}"
+                ln -s "${d}${file}" "${link}"
+                ;;
+        esac
+    done
+    if test ! -e "${d}/lib" && test -d "${d}/usr/lib";then
+        ln -s usr/lib "${d}/lib"
+    fi
+}
+sysroot_fix_pkgconfig() {
+    local d="$1" f=
+    find "${d}" -type f -iregex '.*/pkgconfig/.*' | while read f;do
+        local p2="`echo "${f}"  | sed 's|/[^/][^/]*/pkgconfig/.*||'`"
+        local p1="`echo "${p2}" | sed "s|^${d}||"`"
+        if grep "${p2}" "${f}" >/dev/null 2>&1;then
+            echo "${SCRNAME}: Skipping ${f} ..."
+        else
+            echo "${SCRNAME}: Editing ${f} ..."
+            sed -i".tmp" "s|${p1:-/usr}|${p2}|g" "${f}"
+            rm -f "${f}.tmp"
+        fi
+    done
+}
+sysroot_fix_permissions() {
+    local d="$1"
+    chmod -R a+r "${d}"
+}
+
+
+
+## -----------------------------------------------------------------------------
+SCRNAME="`basename "$0"`"
+if test @"${SCRNAME}" = @"sysroot-fix";then
+    if test -n "$1";then
+        sysroot_fix "$@"
+    else
+        sed -n 's/^ *#h: \{0,1\}//p' "$0" | sed "s|\\\$0|`basename $0`|g"
+        echo ""
+        sed -n 's/^ *#l: \{0,2\}//p' "$0"
+    fi
+fi

@@ -1,0 +1,248 @@
+#!/bin/sh -e
+#L:
+#l:  Copyright (c) 2018 Openvirtus.com, http://openvirtus.com
+#L:
+#L:  Permission is hereby granted, free of charge, to any person obtaining
+#L:  a copy of this software and associated documentation files (the
+#L:  "Software"), to deal in the Software without restriction, including
+#L:  without limitation the rights to use, copy, modify, merge, publish,
+#L:  distribute, sublicense, and/or sell copies of the Software, and to
+#L:  permit persons to whom the Software is furnished to do so, subject to
+#L:  the following conditions:
+#L:
+#L:  The above copyright notice and this permission notice shall be
+#L:  included in all copies or substantial portions of the Software.
+#L:
+#L:  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+#L:  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+#L:  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+#L:  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+#L:  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+#L:  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+#L:  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+#L:
+##:
+#h: Usage: $0 ...
+#h:
+#h: ... show      : Show configuration.
+#h:
+#h: ... prefix    : Install prefix.
+#h: ... build     : Download and build MUSL cross compiler.
+#h: ... headers   : Install headers.
+#h: ... wrappers  : Install wrappers.
+#h: ... scripts   : Install environment scripts.
+#h: ... libfts    : Install libfts.
+#h:
+#h: ... all       : Perform missing all steps.
+#h: ... all-force : Perform all steps.
+. htoolchain-util
+htoolchain_musl() {
+    local cmd="$1"
+    shift
+    case "${cmd}" in
+        show)      htoolchain_musl_show_variables ;;
+        prefix)    htoolchain_musl_prefix         ;;
+        build)     htoolchain_musl_build          ;;
+        headers)   htoolchain_musl_headers        ;;
+        wrappers)  htoolchain_musl_wrappers       ;;
+        scripts)   htoolchain_musl_env_scripts    ;;
+        libfts)    htoolchain_musl_libfts         ;;
+        all)       htoolchain_musl_all            ;;
+        all-force) FORCE=y htoolchain_musl_all    ;;
+        *)         hlog fatal "Invaild argument: ${cmd}." ;;
+    esac
+}
+htoolchain_musl_show_variables() {
+    hterm vars              \
+          MUSL_TARGET       \
+          MUSL_TOOLDIR      \
+          MUSL_SYSROOT      \
+          MUSL_ENV_SCRIPT_1 \
+          MUSL_ENV_SCRIPT_2 \
+          MUSL_CROSS_URL    \
+          LIBFTS_GIT_URL    \
+          FORCE
+}
+htoolchain_musl_calc_variables() {
+    MUSL_TARGET="x86_64-linux-musl"
+    MUSL_TOOLDIR="${MUSL_TOOLDIR:-${HTOOLCHAIN_TOOLDIR}}"
+    MUSL_SYSROOT="${MUSL_SYSROOT:-${MUSL_TOOLDIR}/${MUSL_TARGET}}"
+    MUSL_ENV_SCRIPT_1="${MUSL_ENV_SCRIPT_1:-/usr/local/bin/${MUSL_TARGET}-env}"
+    MUSL_ENV_SCRIPT_2="${MUSL_ENV_SCRIPT_2:-/usr/local/bin/${MUSL_TARGET}-static-env}"
+    MUSL_CROSS_URL="${MUSL_CROSS_URL:-https://github.com/richfelker/musl-cross-make.git,master}"
+    MUSL_WRAPPERS="
+    ${MUSL_TOOLDIR}/bin/${MUSL_TARGET}-gcc
+    ${MUSL_TOOLDIR}/bin/${MUSL_TARGET}-g++
+    ${MUSL_TOOLDIR}/bin/${MUSL_TARGET}-ld
+    "
+    LIBFTS_GIT_URL="${LIBFTS_GIT_URL:-https://github.com/pullmoll/musl-fts.git}"
+}
+## -----------------------------------------------------------------------------
+htoolchain_musl_prefix() {
+    htoolchain_util gen-prefix
+}
+htoolchain_musl_build() {
+    local pwd="`pwd`" w=
+    local sdir="`getsrc_git "${MUSL_CROSS_URL}"`"; test -n "${sdir}"
+    local bdir="${sdir}/build/local/${MUSL_TARGET}"
+    vcd + "${sdir}"
+    rm -f ${MUSL_WRAPPERS}
+    if test ! -f "${bdir}/.done";then
+        sed -i '
+        /^FULL_MUSL_CONFIG/s| = | = --disable-shared CFLAGS="-fPIC" |
+        ' litecross/Makefile
+        vrun make TARGET="${MUSL_TARGET}" OUTPUT="${MUSL_TOOLDIR}" BINUTILS_CONFIG="--enable-gold"
+        touch "${bdir}/.done"
+    fi
+    vrun make install TARGET="${MUSL_TARGET}" OUTPUT="${MUSL_TOOLDIR}"
+    for w in ${MUSL_WRAPPERS};do mv "${w}" "${w}.bin"; done
+    vcd - "${pwd}"
+}
+htoolchain_musl_headers() {
+    if test ! -f "${MUSL_SYSROOT}/include/sys/queue.h";then
+        hlog info "Copying ${MUSL_SYSROOT}/include/sys/queue.h ..."
+        mkdir -p "${MUSL_SYSROOT}/include/sys"
+        find /usr/include -iregex '.*/sys/queue\.h$' -exec cp '{}' "${MUSL_SYSROOT}/include/sys" ';'
+    fi
+    if test ! -f "${MUSL_SYSROOT}/include/sys/cdefs.h";then
+        hlog info "Creating ${MUSL_SYSROOT}/include/sys/cdefs.h"
+        mkdir -p "${MUSL_SYSROOT}/include/sys"
+        cat > "${MUSL_SYSROOT}/include/sys/cdefs.h" <<-EOF
+	#ifdef __cplusplus
+	#  define __BEGIN_DECLS extern "C" {
+	#else
+	#  define __BEGIN_DECLS
+	#endif	
+	#ifdef __cplusplus
+	#  define __END_DECLS }
+	#else
+	#  define __END_DECLS
+	#endif
+	EOF
+    fi
+}
+htoolchain_musl_wrappers() {
+    local w= 
+    for w in ${MUSL_WRAPPERS};do
+        hlog info "Wrapping ${w} ..."
+        case "${w}" in
+            *-gcc|*-g++) hfile wrapper "${w}" <<-EOF
+		#!/bin/sh -e
+		exec "${w}.bin" \\
+		    -fuse-ld=gold                                    \\
+		    -static-libstdc++ -static-libgcc                 \\
+		    -fPIC -fcommon -fno-stack-protector              \\
+		    -Wl,--no-as-needed                               \\
+		    -Wl,-z,stack-size=1048576                        \\
+		    -Wl,--dynamic-linker=/lib64/ld-linux-x86-64.so.2 \\
+		    -Wl,--allow-multiple-definition                  \\
+		    "\$@"                                            \\
+		    -Wl,-rpath,${MUSL_SYSROOT}/usr/lib               \\
+		    -Wl,--start-group                                \\
+		      -Wl,--whole-archive                            \\
+		        -l:libc.a                                    \\
+		      -Wl,--no-whole-archive                         \\
+		    -Wl,--end-group
+		EOF
+                ;;
+            *-ld) hfile wrapper "${w}" <<-EOF
+		#!/bin/sh -e
+		exec "${w}.gold" \\
+		    --no-as-needed                               \\
+		    -z stack-size=1048576                        \\
+		    --dynamic-linker=/lib64/ld-linux-x86-64.so.2 \\
+		    --allow-multiple-definition                  \\
+		    "\$@"                                        \\
+		    -rpath,${MUSL_SYSROOT}/usr/lib               \\
+		    --start-group                                \\
+		      --whole-archive                            \\
+		        -l:libc.a                                \\
+		      --no-whole-archive                         \\
+		    --end-group
+		EOF
+        esac
+    done
+}
+htoolchain_musl_env_scripts() {
+    hlog info "Creating ${MUSL_ENV_SCRIPT_1} ..."
+    sudo tee "${MUSL_ENV_SCRIPT_1}" <<-EOF >/dev/null
+	#!/bin/sh -e
+	. hcross-env-c
+	hcross_env_c                      \\
+	    type=gnu                      \\
+	    path="${MUSL_TOOLDIR}/bin"    \\
+	    tool_prefix="${MUSL_TARGET}-" \\
+	    prefix="${MUSL_SYSROOT}/usr"  \\
+	    prefixes="${MUSL_SYSROOT}/usr ${MUSL_SYSROOT}"
+	export HBUILD_PREFER_STATIC=
+	HBUILD_VARS="\${HBUILD_VARS} LIBTOOL_FAILS_SHARED"
+	EOF
+    sudo chmod +x "${MUSL_ENV_SCRIPT_1}"
+    hlog info "Creating ${MUSL_ENV_SCRIPT_2} ..."
+    local libstd="-static-libstdc++ -static-libgcc"
+    local hacks="-Wl,-z,stack-size=1048576"
+    local exclude="-Wl,--exclude-libs,libz.a"
+    local libc=" -Wl,--whole-archive -l:libc.a -Wl,--no-whole-archive"
+    sudo tee "${MUSL_ENV_SCRIPT_2}" <<-EOF >/dev/null
+	#!/bin/sh -e
+	. hcross-env-c
+	hcross_env_c                      \\
+	    type=gnu                      \\
+	    path="${MUSL_TOOLDIR}/bin"    \\
+	    tool_prefix="${MUSL_TARGET}-" \\
+	    prefix="${MUSL_SYSROOT}/usr"  \\
+	    prefixes="${MUSL_SYSROOT}/usr ${MUSL_SYSROOT}" \\
+	    ldflags="${libstd} ${hacks} ${exclude} ${libc}"
+	export HBUILD_PREFER_STATIC=y
+	HBUILD_VARS="\${HBUILD_VARS} LIBTOOL_FAILS_SHARED"
+	EOF
+    sudo chmod +x "${MUSL_ENV_SCRIPT_2}"
+}
+htoolchain_musl_libfts() {
+    local pwd="`pwd`"
+    local src="`getsrc_git "${LIBFTS_GIT_URL}"`"
+    vcd + "${src}"
+    hcross -t "${MUSL_TARGET}" eval '
+    sh bootstrap.sh
+    hautotools all --disable-shared
+    '
+    vcd - "${pwd}"
+}
+
+## -----------------------------------------------------------------------------
+htoolchain_musl_all() {
+    hlog info "Started: `date`"
+    hlog info "Log to: ${HTOOLCHAIN_LOG}"
+    rm -f "${HTOOLCHAIN_LOG}"
+    if true;then
+        hlog info "Creating directories ..."
+        htoolchain_musl_prefix >> "${HTOOLCHAIN_LOG}" 2>&1
+    fi
+    if test ! -f "${MUSL_TOOLDIR}/bin/${MUSL_TARGET}-gcc.bin" || test -n "${FORCE}";then
+        hlog info "Building the MUSL toolchain ..."
+        htoolchain_musl_build >> "${HTOOLCHAIN_LOG}" 2>&1
+    fi
+    if test ! -f "${MUSL_SYSROOT}/include/sys/queue.h" || test -n "${FORCE}";then
+        hlog info "Installing headers not included in MUSL ..."
+        htoolchain_musl_headers >> "${HTOOLCHAIN_LOG}" 2>&1
+    fi
+    if true;then
+        hlog info "Installing wrappers ..."
+        htoolchain_musl_wrappers >> "${HTOOLCHAIN_LOG}" 2>&1
+    fi
+    if true;then
+        hlog info "Creating scripts ..."
+        htoolchain_musl_env_scripts >> "${HTOOLCHAIN_LOG}" 2>&1
+    fi
+    if test ! -f "${MUSL_SYSROOT}/usr/include/fts.h";then
+        hlog info "Installing libfts ..."
+        htoolchain_musl_libfts >> "${HTOOLCHAIN_LOG}" 2>&1
+    fi
+    hlog info "Creating ${MUSL_ENV_SCRIPT} ..."
+    hlog info "Finished: `date`"
+}
+
+
+## -----------------------------------------------------------------------------
+htoolchain_musl_calc_variables
+hmain -f "htoolchain-musl" htoolchain_musl "$@"

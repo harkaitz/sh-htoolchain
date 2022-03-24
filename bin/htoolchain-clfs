@@ -23,18 +23,21 @@
 #L:  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 #L:  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 #L:  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+##:
 #h: Usage: $0 ...
 #h:
 #h: ... show      : Show configuration.
 #h: ... all       : Build the missing parts of the whole toolchain.
 #h: ... all-force : Build the whole toolchain.
 #h:
+#h: ... prefix                        : Install prefix.
 #h: ... linux-headers                 : Install Linux kernel headers.
 #h: ... pkg-config                    : Install pkg-config.
 #h: ... binutils                      : Install linker/assembler/...
 #h: ... gmp,mpfr,mpc,isl              : Install GCC dependencies.
 #h: ... gcc-basic,glibc,libstdc++,gcc : Install C library and GCC.
 #h: ... script                        : Install Environment script.
+##:
 . htoolchain-util
 htoolchain_clfs() {
     local cmd="$1"
@@ -43,7 +46,7 @@ htoolchain_clfs() {
         show)      htoolchain_clfs_show_variables            ;;
         all)       htoolchain_clfs_all                       ;;
         all-force) FORCE=y htoolchain_clfs_all               ;;
-        linux-headers|pkg-config|gcc-basic|\
+        prefix|linux-headers|pkg-config|gcc-basic|\
         binutils|gmp|mpfr|mpc|isl|glibc|libstdc++|gcc|script)
             clfs_"`echo "${cmd}" | tr '-' '_' | tr '+' 'p'`" ;;
         *) hlog fatal "Invalid subcommand: ${cmd}."          ;;
@@ -51,7 +54,13 @@ htoolchain_clfs() {
 }
 htoolchain_clfs_show_variables() {
     htoolchain_util show
-    hterm vars CLFS_TARGET CLFS_TOOLDIR CLFS_SYSROOT CLFS_ENV_SCRIPT CLFS_GLIBC_MINIMAL FORCE
+    hterm vars               \
+          CLFS_TARGET        \
+          CLFS_TOOLDIR       \
+          CLFS_SYSROOT       \
+          CLFS_ENV_SCRIPT    \
+          CLFS_GLIBC_MINIMAL \
+          FORCE
 }
 htoolchain_clfs_calc_variables() {
     CLFS_TARGET="${CLFS_TARGET:-x86_64-ht-linux-gnu}"
@@ -66,14 +75,10 @@ htoolchain_clfs_all() {
     hlog info "Started: `date`"
     hlog info "Log to: ${HTOOLCHAIN_LOG}"
     rm -f "${HTOOLCHAIN_LOG}"
-    hlog info "Creating directories ..."
     if true;then
-        htoolchain_util gen-prefix
-        vrun mkdir -p                   "${CLFS_SYSROOT}"
-        vrun mkdir -p         "`dirname "${CLFS_SYSROOT}/${CLFS_SYSROOT}"`"
-        vrun rm -f                      "${CLFS_SYSROOT}/${CLFS_SYSROOT}"
-        vrun ln -s    "${CLFS_SYSROOT}" "${CLFS_SYSROOT}/${CLFS_SYSROOT}"
-    fi >> "${HTOOLCHAIN_LOG}" 2>&1
+        hlog info "Creating directories ..."
+        clfs_prefix >> "${HTOOLCHAIN_LOG}" 2>&1
+    fi 
     if test ! -f "${CLFS_SYSROOT}/include/linux/uuid.h" || test -n "${FORCE}";then
         hlog info "Building Linux headers ..."
         clfs_linux_headers >> "${HTOOLCHAIN_LOG}" 2>&1
@@ -110,10 +115,10 @@ htoolchain_clfs_all() {
         hlog info "Building GLIBC ..."
         clfs_glibc >> "${HTOOLCHAIN_LOG}" 2>&1
     fi
-    #if test ! -f "${CLFS_SYSROOT}/lib/libstdc++.a" || test -n "${FORCE}";then
-    #    hlog info "Building LIBSTDC++ ..."
-    #    clfs_libstdcpp >> "${HTOOLCHAIN_LOG}" 2>&1
-    #fi
+    if test ! -f "${CLFS_SYSROOT}/lib/libstdc++.a" || test -n "${FORCE}";then
+        hlog info "Building LIBSTDC++ ..."
+        clfs_libstdcpp >> "${HTOOLCHAIN_LOG}" 2>&1
+    fi
     if test ! -f "${CLFS_TOOLDIR}/lib/gcc/${CLFS_TARGET}/full" || test -n "${FORCE}";then
         hlog info "Building GCC (final, second pass) ..."
         clfs_gcc >> "${HTOOLCHAIN_LOG}" 2>&1
@@ -121,26 +126,27 @@ htoolchain_clfs_all() {
     hlog info "Creating ${CLFS_ENV_SCRIPT} ..."
     hlog info "Finished: `date`"
 }
+clfs_prefix() {
+    htoolchain_util gen-prefix
+    vrun mkdir -p                   "${CLFS_SYSROOT}"
+    vrun mkdir -p         "`dirname "${CLFS_SYSROOT}/${CLFS_SYSROOT}"`"
+    vrun rm -f                      "${CLFS_SYSROOT}/${CLFS_SYSROOT}"
+    vrun ln -s    "${CLFS_SYSROOT}" "${CLFS_SYSROOT}/${CLFS_SYSROOT}"
+    vrun rm -f                      "${CLFS_SYSROOT}/usr"
+    vrun ln -s    "${CLFS_SYSROOT}" "${CLFS_SYSROOT}/usr"
+}
 clfs_linux_headers() {
-    local pwd="`pwd`"
-    local src_u1="`htoolchain_util url clfs linux       `"; test -n "${src_u1}"
-    local src_u2="`htoolchain_util url clfs linux/patch `"; test -n "${src_u2}"
-    local src="`   getsrc_tar    "${src_u1}" `"
-    local patch="` getsrc_cached "${src_u2}" `"
+    local url="https://www.kernel.org/pub/linux/kernel/v5.x/linux-5.16.9.tar.xz"
+    local src="`getsrc_tar "${url}"`" pwd="`pwd`"
     vcd + "${src}"
-    if test ! -f .p1;then
-        xzcat "${patch}" | patch -Np1 -i - > .p1.log 2>&1
-        touch .p1
-    fi
     vrun make mrproper
     vrun make ARCH=x86_64 headers_check
     vrun make ARCH=x86_64 INSTALL_HDR_PATH="${CLFS_SYSROOT}" headers_install
     vcd - "${pwd}"
 }
 clfs_pkg_config() {
-    local pwd="`pwd`"
-    local url="`htoolchain_util url clfs pkg-config`"; test -n "${url}"
-    local src="`getsrc_tar "${url}"`"
+    local url="http://sourceforge.net/projects/pkgconfiglite/files/0.28-1/pkg-config-lite-0.28-1.tar.gz"
+    local src="`getsrc_tar "${url}"`" pwd="`pwd`"
     vcd + "${src}"
     vrun ./configure                         \
          --prefix="${CLFS_TOOLDIR}"          \
@@ -152,30 +158,23 @@ clfs_pkg_config() {
     vcd - "${pwd}"
 }
 clfs_binutils() {
-    local pwd="`pwd`"
-    local url="`htoolchain_util url clfs binutils`"; test -n "${url}"
-    local src="`getsrc_tar "${url}"`"
+    local url="http://ftp.gnu.org/gnu/binutils/binutils-2.38.tar.bz2"
+    local src="`getsrc_tar "${url}"`" pwd="`pwd`"
     vcd + "${src}"
-    vrun ./configure                       \
-         --prefix="${CLFS_TOOLDIR}"        \
-         --target="${CLFS_TARGET}"         \
-         --with-sysroot="${CLFS_SYSROOT}"  \
-         --with-lib-path="${CLFS_SYSROOT}" \
-         --disable-nls                     \
-         --enable-64-bit-bfd               \
-         --enable-gold=yes                 \
-         --enable-plugins                  \
-         --enable-threads                  \
-         --disable-werror                  \
+    vrun ./configure                      \
+         --prefix="${CLFS_TOOLDIR}"       \
+         --target="${CLFS_TARGET}"        \
+         --with-sysroot="${CLFS_SYSROOT}" \
+         --disable-nls                    \
+         --disable-werror                 \
          LDFLAGS="-Wl,-rpath,${CLFS_TOOLDIR}/lib"
     vrun make
     vrun make install
     vcd - "${pwd}"
 }
 clfs_gmp() {
-    local pwd="`pwd`"
-    local url="`htoolchain_util url clfs gmp`"; test -n "${url}"
-    local src="`getsrc_tar "${url}"`"
+    local url="http://ftp.gnu.org/gnu/gmp/gmp-6.2.1.tar.xz"
+    local src="`getsrc_tar "${url}"`" pwd="`pwd`"
     vcd + "${src}"
     vrun ./configure --prefix="${CLFS_TOOLDIR}" LDFLAGS="-Wl,-rpath,${CLFS_TOOLDIR}/lib"
     vrun make
@@ -183,16 +182,9 @@ clfs_gmp() {
     vcd - "${pwd}"
 }
 clfs_mpfr() {
-    local pwd="`pwd`"
-    local url="`  htoolchain_util url clfs mpfr      `"; test -n "${url}"
-    local url_p="`htoolchain_util url clfs mpfr/patch`"; test -n "${url_p}"
-    local src="`getsrc_tar    "${url}"    `"
-    local p1="` getsrc_cached "${url_p}"  `"
+    local url="https://www.mpfr.org/mpfr-4.1.0/mpfr-4.1.0.tar.xz"
+    local src="`getsrc_tar "${url}"`" pwd="`pwd`"
     vcd + "${src}"
-    if test ! -f .p1;then
-        patch -Np1 -i "${p1}"
-        touch .p1
-    fi
     vrun ./configure                  \
          --prefix="${CLFS_TOOLDIR}"   \
          --with-gmp="${CLFS_TOOLDIR}" \
@@ -202,9 +194,8 @@ clfs_mpfr() {
     vcd - "${pwd}"
 }
 clfs_mpc() {
-    local pwd="`pwd`"
-    local url="`htoolchain_util url clfs mpc`"; test -n "${url}"
-    local src="`getsrc_tar "${url}"`"
+    local url="https://ftp.gnu.org/gnu/mpc/mpc-1.2.1.tar.gz"
+    local src="`getsrc_tar "${url}"`" pwd="`pwd`"
     vcd + "${src}"
     vrun ./configure                          \
          --prefix="${CLFS_TOOLDIR}"    \
@@ -216,9 +207,8 @@ clfs_mpc() {
     vcd - "${pwd}"
 }
 clfs_isl() {
-    local pwd="`pwd`"
-    local url="`htoolchain_util url clfs isl`"; test -n "${url}"
-    local src="`getsrc_tar "${url}"`"
+    local url="http://archive.ubuntu.com/ubuntu/pool/universe/i/isl-0.18/isl-0.18_0.18.orig.tar.xz"
+    local src="`getsrc_tar "${url}"`" pwd="`pwd`"
     vcd + "${src}"
     vrun ./configure                         \
          --prefix="${CLFS_TOOLDIR}"          \
@@ -229,33 +219,28 @@ clfs_isl() {
     vcd - "${pwd}"
 }
 clfs_gcc_download() {
-    local url="`htoolchain_util url clfs gcc`"; test -n "${url}"
+    local url="https://ftp.gnu.org/gnu/gcc/gcc-11.2.0/gcc-11.2.0.tar.xz"
     local src="`getsrc_tar "${url}"`"
     test -n "${src}"
-    sed -i '
-        /m64=/s/lib64/lib/
-    ' "${src}/gcc/config/i386/t-linux64"
     if test ! -f "${src}/.p2";then
+        sed -i '
+        /m64=/s/lib64/lib/
+        ' "${src}/gcc/config/i386/t-linux64"
         printf '
         #undef STANDARD_STARTFILE_PREFIX_1
         #define STANDARD_STARTFILE_PREFIX_1 "%s/lib/"
-        ' "${HBUILD_CLFS_SYSROOT}" >> "${src}/gcc/config/linux.h"
+        ' "${CLFS_SYSROOT}" >> "${src}/gcc/config/linux.h"
         printf '
         #undef STANDARD_STARTFILE_PREFIX_2
         #define STANDARD_STARTFILE_PREFIX_2 ""
         ' >> "${src}/gcc/config/linux.h"
-        touch .p2
+        touch "${src}/.p2"
     fi
-    # if test ! -e "${src}/${HBUILD_CLFS_TARGET}/libgcc/gthr-default.h";then
-    #     mkdir -p "${src}/${HBUILD_CLFS_TARGET}/libgcc"
-    #     rm -f "${src}/${HBUILD_CLFS_TARGET}/libgcc/gthr-default.h"
-    #     ln -s "../../../libgcc/gthr-posix.h" "${src}/${HBUILD_CLFS_TARGET}/libgcc/gthr-default.h"
-    # fi
     echo "${src}"
 }
 clfs_gcc_basic() {
-    local pwd="`pwd`"
-    local src="`clfs_gcc_download`"; test -n "${src}"
+    local src="`clfs_gcc_download`" pwd="`pwd`"
+    test -n "${src}"
     local bas="`basename "${src}"`"
     local tmp="${src}-build-basic"
     rm -rf "${tmp}"
@@ -265,8 +250,8 @@ clfs_gcc_basic() {
          --prefix="${CLFS_TOOLDIR}"            \
          --target="${CLFS_TARGET}"             \
          --with-sysroot="${CLFS_SYSROOT}"      \
-         --with-local-prefix="${CLFS_SYSROOT}" \
-         --with-native-system-header-dir="${CLFS_SYSROOT}/include" \
+         --with-local-prefix="${CLFS_TOOLDIR}" \
+         --with-native-system-header-dir="${CLFS_TOOLDIR}/include" \
          --with-mpfr="${CLFS_TOOLDIR}"         \
          --with-gmp="${CLFS_TOOLDIR}"          \
          --with-isl="${CLFS_TOOLDIR}"          \
@@ -289,35 +274,42 @@ clfs_gcc_basic() {
          --disable-libstdcxx       \
          --enable-languages=c,c++  \
          LDFLAGS="-Wl,-rpath,${CLFS_TOOLDIR}/lib"
-    vrun make V=1 -j"${NPROC}" all
-    vrun make V=1 -j"${NPROC}" install
+    vrun make V=1 -j"${NPROC}" all-gcc all-target-libgcc
+    vrun make V=1 -j"${NPROC}" install-gcc install-target-libgcc
     vcd - "${pwd}"
 }
 clfs_glibc() {
-    local pwd="`pwd`"
-    local url="`htoolchain_util url clfs glibc`"; test -n "${url}"
-    local src="`getsrc_tar "${url}"`"; test -n "${src}"
+    local url="http://ftp.gnu.org/gnu/glibc/glibc-2.35.tar.xz"
+    local src="`getsrc_tar "${url}"`" pwd="`pwd`"
+    test -n "${src}"
     local bas="`basename "${src}"`"
     local tmp="${src}-build"
     rm -rf "${tmp}"
     mkdir -p "${tmp}"
+    sed -i 's/\\$$(pwd)/`pwd`/' ${src}/timezone/Makefile
     vcd + "${tmp}"
+    echo "libc_cv_ssp=no" > config.cache
     vrun env                                      \
          BUILD_CC="gcc"                           \
+         CC="${CLFS_TARGET}-gcc -m64"             \
+         AR="${CLFS_TARGET}-ar"                   \
+         RANLIB="${CLFS_TARGET}-ranlib"           \
          "../${bas}/configure"                    \
          --host="${CLFS_TARGET}"                  \
          --prefix="${CLFS_SYSROOT}"               \
          --enable-kernel=3.12.0                   \
          --with-headers="${CLFS_SYSROOT}/include" \
          --enable-obsolete-rpc                    \
-         --disable-werror
+         --disable-werror                         \
+         --with-binutils="${CLFS_TOOLDIR}/bin"    \
+         --cache-file=config.cache
     vrun make V=1 -j"${NPROC}"
     vrun make V=1 -j"${NPROC}" install
     vcd - "${pwd}"
 }
 clfs_libstdcpp() {
-    local pwd="`pwd`"
-    local src="`clfs_gcc_download`"; test -n "${src}"
+    local src="`clfs_gcc_download`" pwd="`pwd`"
+    test -n "${src}"
     local bas="`basename "${src}"`"
     local tmp="${src}-build-libstdcpp"
     rm -rf "${tmp}"
@@ -335,8 +327,8 @@ clfs_libstdcpp() {
     vcd - "${pwd}"
 }
 clfs_gcc() {
-    local pwd="`pwd`"
-    local src="`clfs_gcc_download`"; test -n "${src}"
+    local src="`clfs_gcc_download`" pwd="`pwd`"
+    test -n "${src}"
     local bas="`basename "${src}"`"
     local tmp="${src}-build-full"
     rm -rf "${tmp}"
@@ -346,8 +338,7 @@ clfs_gcc() {
          --prefix="${CLFS_TOOLDIR}"                   \
          --target="${CLFS_TARGET}"                    \
          --with-sysroot="${CLFS_SYSROOT}"             \
-         --with-local-prefix="${CLFS_SYSROOT}"        \
-         --with-native-system-header-dir="${CLFS_SYSROOT}/include" \
+         --with-local-prefix="${CLFS_TOOLDIR}"        \
          --with-mpfr="${CLFS_TOOLDIR}"                \
          --with-gmp="${CLFS_TOOLDIR}"                 \
          --with-isl="${CLFS_TOOLDIR}"                 \
@@ -382,7 +373,10 @@ clfs_script() {
 	    path="${CLFS_TOOLDIR}/bin"    \\
 	    tool_prefix="${CLFS_TARGET}-" \\
 	    prefix="${CLFS_SYSROOT}/usr"  \\
-	    prefixes="${CLFS_SYSROOT}/usr ${CLFS_SYSROOT}"
+	    prefixes="${CLFS_SYSROOT}/usr ${CLFS_SYSROOT}" \\
+	    linker="${CLFS_SYSROOT}/lib/ld-linux-x86-64.so.2"
+	export LIBTOOL_FAILS_SHARED=y
+	HBUILD_VARS="\${HBUILD_VARS} LIBTOOL_FAILS_SHARED CXX_IS_BUGGY"
 	EOF
     sudo chmod +x "${CLFS_ENV_SCRIPT}"
 }
