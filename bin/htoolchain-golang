@@ -1,0 +1,101 @@
+#!/bin/sh -e
+#L:
+#L:  MIT License
+#L:  
+#l:  Bug reports, feature requests to gemini|https://harkadev.com/oss
+#l:  Copyright (c) 2022 Harkaitz Agirre, harkaitz.aguirre@gmail.com
+#L:
+#L:  Permission is hereby granted, free of charge, to any person obtaining
+#L:  a copy of this software and associated documentation files (the
+#L:  "Software"), to deal in the Software without restriction, including
+#L:  without limitation the rights to use, copy, modify, merge, publish,
+#L:  distribute, sublicense, and/or sell copies of the Software, and to
+#L:  permit persons to whom the Software is furnished to do so, subject to
+#L:  the following conditions:
+#L:
+#L:  The above copyright notice and this permission notice shall be
+#L:  included in all copies or substantial portions of the Software.
+#L:
+#L:  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+#L:  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+#L:  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+#L:  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+#L:  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+#L:  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+#L:  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+##:
+#h: Usage: $0 [show|install|remove]
+#h:
+#h: Download and install the Go toolchain.
+. hmain
+. hterm
+. hlog
+. hfile
+. htoolchain-util
+htoolchain_golang() {
+    local cmd="$1"
+    shift
+    case "${cmd}" in
+        show)    htoolchain_golang_show_variables       ;;
+        install) htoolchain_golang_install              ;;
+        remove)  htoolchain_golang_remove               ;;
+        *)       hlog fatal "Invalid argument: ${cmd}." ;;
+    esac
+}
+htoolchain_golang_show_variables() {
+    hterm vars       \
+          -          \
+          GOROOT     \
+          GOPATH     \
+          GO_VERSION \
+          -
+}
+htoolchain_golang_calc_variables() {
+    export GOROOT="${HTOOLCHAIN_TOOLDIR}/go"
+    export GOPATH="${HTOOLCHAIN_TOOLDIR}/gopath"
+    GO_VERSION="${GO_VERSION:-1.18}"
+}
+## -----------------------------------------------------------------------------
+htoolchain_golang_install() {
+    local v="${GO_VERSION}"
+    local u_li64="https://golang.org/dl/go${v}.linux-amd64.tar.gz"
+    if test ! -f "${GOROOT}/bin/go";then
+        case "`uname -s`-`uname -m`" in
+            Linux-x86_64) local url="${u_li64}"                ;;
+            *)            hlog fatal "Unsupported platform." ;;
+        esac
+        local tar="`hget "${url}"`"
+        test -n "${tar}"
+        htoolchain_util gen-prefix
+        vrun hextract sudo "${tar}" "${GOROOT}" go
+    fi
+    hlog info "Creating /etc/profile.d/zz-go.sh ..."
+    hfile wrapper sudo "/etc/profile.d/zz-go.sh" <<-EOF
+	export PATH="${GOROOT}/bin:${GOPATH}/bin:\${PATH}"
+	export GOROOT="${GOROOT}"
+	export GOPATH="${GOPATH}"
+	EOF
+    hlog info "Creating ${HTOOLCHAIN_SCRDIR}/golang-env ..."
+    hfile wrapper sudo "${HTOOLCHAIN_SCRDIR}/golang-env" <<-EOF
+	#!/bin/sh -e
+	if test ! -n "\${GOROOT}";then
+	    . /etc/profile.d/zz-go.sh
+	fi
+	export HBUILD_TOOLCHAIN=golang
+	export HBUILD_DESTDIR="\${HBUILD_DESTDIR}"
+	export HBUILD_PREFIX="\${HBUILD_PREFIX:-${GOPATH}}"
+	export HBUILD_VARS='
+	PATH HBUILD_TOOLCHAIN HBUILD_DESTDIR HBUILD_PREFIX
+	'
+	EOF
+}
+htoolchain_golang_remove() {
+    vrun sudo rm -rf                       \
+         "/etc/profile.d/zz-go.sh"         \
+         "${HTOOLCHAIN_SCRDIR}/golang-env" \
+         "${GOROOT:-/tmp/failure-dir}"     \
+         "${GOPATH:-/tmp/failure-dir}"
+}
+## -----------------------------------------------------------------------------
+htoolchain_golang_calc_variables
+hmain -f "htoolchain-golang" htoolchain_golang "$@"

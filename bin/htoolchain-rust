@@ -1,0 +1,87 @@
+#!/bin/sh -e
+#L:
+#L:  MIT License
+#L:  
+#l:  Bug reports, feature requests to gemini|https://harkadev.com/oss
+#l:  Copyright (c) 2022 Harkaitz Agirre, harkaitz.aguirre@gmail.com
+#L:
+#L:  Permission is hereby granted, free of charge, to any person obtaining
+#L:  a copy of this software and associated documentation files (the
+#L:  "Software"), to deal in the Software without restriction, including
+#L:  without limitation the rights to use, copy, modify, merge, publish,
+#L:  distribute, sublicense, and/or sell copies of the Software, and to
+#L:  permit persons to whom the Software is furnished to do so, subject to
+#L:  the following conditions:
+#L:
+#L:  The above copyright notice and this permission notice shall be
+#L:  included in all copies or substantial portions of the Software.
+#L:
+#L:  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+#L:  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+#L:  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+#L:  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+#L:  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+#L:  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+#L:  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+##:
+#h: Usage: $0 [show|install]
+#h:
+#h: Download and install rust.
+. hmain
+. vrun
+. hfile
+. hterm
+. hlog
+. htoolchain-util
+htoolchain_rust() {
+    local cmd="$1"
+    shift
+    case "${cmd}" in
+        show)    htoolchain_rust_show_variables         ;;
+        install) htoolchain_rust_install                ;;
+        *)       hlog fatal "Invalid argument: ${cmd}." ;;
+    esac
+}
+htoolchain_rust_show_variables() {
+    hterm vars        \
+          -           \
+          CARGO_HOME  \
+          RUSTUP_HOME \
+          RUST_URL    \
+          RUST_ENV    \
+          -
+}
+htoolchain_rust_calc_variables() {
+    export CARGO_HOME="${HTOOLCHAIN_TOOLDIR}/rust"
+    export RUSTUP_HOME="${HTOOLCHAIN_TOOLDIR}/rust/rustup"
+    RUST_URL="${RUST_URL:-https://sh.rustup.rs}"
+    RUST_ENV="${RUST_ENV:-${HTOOLCHAIN_SCRDIR}/rust-env}"
+}
+## -----------------------------------------------------------------------------
+htoolchain_rust_install() {
+    if test ! -f "${CARGO_HOME}/bin/cargo";then
+        local i="`hget "${RUST_URL}" rust-install`"
+        hlog errif "Failed to download rust." test ! -n "${i}"
+        htoolchain_util gen-prefix
+        vrun sh -e "${i}"              \
+           -y                          \
+           --default-toolchain nightly \
+           --no-modify-path `: Reads CARGO_HOME RUSTUP_HOME`
+    fi
+    hlog info "Creating ${RUST_ENV} ..."
+    sudo tee "${RUST_ENV}" >/dev/null <<-EOF
+	#!/bin/sh -e
+	. "${CARGO_HOME}/env"
+	export HBUILD_TOOLCHAIN=rust
+	export HBUILD_DESTDIR="\${HBUILD_DESTDIR}"
+	export HBUILD_PREFIX="\${HBUILD_PREFIX:-${CARGO_HOME}}"
+	export HBUILD_VARS='
+	PATH HBUILD_TOOLCHAIN HBUILD_DESTDIR HBUILD_PREFIX
+	'
+	EOF
+    sudo chmod +x "${RUST_ENV}"
+}
+
+## -----------------------------------------------------------------------------
+htoolchain_rust_calc_variables
+hmain -f "htoolchain-rust" htoolchain_rust "$@"

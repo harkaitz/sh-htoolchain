@@ -35,6 +35,7 @@
 . vcd
 . hlog
 . vrun
+. lrun
 . hmain
 . hterm
 . getsrc-tar

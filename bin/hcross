@@ -34,7 +34,7 @@
 hcross() {
     local old_env="`export -p`"
     local old_vars="${HBUILD_VARS}" var= line=
-    local toolchain="${HBUILD_TOOLCHAIN}"
+    local toolchain="${HBUILD_TOOLCHAIN:-native}"
     HBUILD_VARS= HBUILD_TOOLCHAIN=
     ## Parse command line options.
     local OPTIND optopt= ops= wrap=
@@ -49,7 +49,16 @@ hcross() {
     done
     shift $(( $OPTIND - 1 ))
     ## Search and set environment.
-    if test -n "${toolchain}";then
+    if test @"${toolchain}" = @"native";then
+        export HBUILD_TOOLCHAIN=native
+        export HBUILD_PREFIX="${HBUILD_PREFIX:-/usr/local}"
+        if test   -e "${HBUILD_DESTDIR}${HBUILD_PREFIX}" && \
+           test ! -w "${HBUILD_DESTDIR}${HBUILD_PREFIX}";then
+            export HBUILD_SUDO=sudo
+        else
+            export HBUILD_SUDO=env
+        fi
+    elif test -n "${toolchain}";then
         local script="`which "${toolchain}-env" 2>/dev/null`"
         if test ! -n "${script}";then
             echo "${SCRNAME}: error: Can't find '${toolchain}-env' in path." >&2
@@ -70,9 +79,17 @@ hcross() {
     ## Execute in the changed environment.
     case "${1}" in
         ''|show)
-            for var in ${HBUILD_VARS};do
-                eval 'printf "%-20s : %s\\n" "${var}" "${'"${var}"'}"'
-            done;;
+            if test -n "${wrap}";then
+                printf '%s\n' "${PATH}" | tr ':' '\n' | while read line;do
+                    if test -d "${line}";then
+                        ls "${line}" | sed -n 's|build_||p'
+                    fi
+                done
+            else
+                for var in ${HBUILD_VARS};do
+                    eval 'printf "%-20s : %s\\n" "${var}" "${'"${var}"'}"'
+                done
+            fi;;
         list)
             printf '%s\n' "${PATH}" | tr ':' '\n' | while read line;do
                 if test -d "${line}";then
@@ -89,7 +106,7 @@ hcross() {
             fi;;
     esac
     ## Restore environment
-    unset HBUILD_PREFIX HBUILD_DESTDIR HBUILD_TOOLCHAIN ${HBUILD_VARS}
+    unset HBUILD_PREFIX HBUILD_DESTDIR HBUILD_TOOLCHAIN HBUILD_SUDO ${HBUILD_VARS}
     HBUILD_VARS="${old_vars}"
     eval "${old_env}"
 }

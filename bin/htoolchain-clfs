@@ -73,57 +73,47 @@ htoolchain_clfs_calc_variables() {
 ## -----------------------------------------------------------------------------
 htoolchain_clfs_all() {
     hlog info "Started: `date`"
-    hlog info "Log to: ${HTOOLCHAIN_LOG}"
-    rm -f "${HTOOLCHAIN_LOG}"
+    hlog info "Log to: ${LRUN_LOGDIR}"
+    local LRUN_COL1=20 LRUN_COL2=20
     if true;then
-        hlog info "Creating directories ..."
-        clfs_prefix >> "${HTOOLCHAIN_LOG}" 2>&1
+        lrun -f clfs_prefix clfs_prefix
     fi 
     if test ! -f "${CLFS_SYSROOT}/include/linux/uuid.h" || test -n "${FORCE}";then
-        hlog info "Building Linux headers ..."
-        clfs_linux_headers >> "${HTOOLCHAIN_LOG}" 2>&1
+        lrun -f clfs_linux_headers clfs_linux_headers
     fi
     if test ! -f "${CLFS_TOOLDIR}/bin/${CLFS_TARGET}-pkg-config" || test -n "${FORCE}";then
-        hlog info "Building pkg-config ..."
-        clfs_pkg_config >> "${HTOOLCHAIN_LOG}" 2>&1
+        lrun -f clfs_pkg_config clfs_pkg_config
     fi
     if test ! -f "${CLFS_TOOLDIR}/bin/${CLFS_TARGET}-ld" || test -n "${FORCE}";then
-        hlog info "Building binutils ..."
-        clfs_binutils >> "${HTOOLCHAIN_LOG}" 2>&1
+        lrun -f clfs_binutils clfs_binutils
     fi
     if test ! -f "${CLFS_TOOLDIR}/lib/libgmp.a" || test -n "${FORCE}";then
-        hlog info "Building GMP ..."
-        clfs_gmp >> "${HTOOLCHAIN_LOG}" 2>&1
+        lrun -f clfs_gmp clfs_gmp
     fi
     if test ! -f "${CLFS_TOOLDIR}/lib/libmpfr.a" || test -n "${FORCE}";then
-        hlog info "Building MPFR ..."
-        clfs_mpfr >> "${HTOOLCHAIN_LOG}" 2>&1
+        lrun -f clfs_mpfr clfs_mpfr
     fi
     if test ! -f "${CLFS_TOOLDIR}/lib/libmpc.a" || test -n "${FORCE}";then
-        hlog info "Building MPC ..."
-        clfs_mpc >> "${HTOOLCHAIN_LOG}" 2>&1
+        lrun -f clfs_mpc clfs_mpc
     fi
     if test ! -f "${CLFS_TOOLDIR}/lib/libisl.a" || test -n "${FORCE}";then
-        hlog info "Building ISL ..."
-        clfs_isl >> "${HTOOLCHAIN_LOG}" 2>&1
+        lrun -f clfs_isl clfs_isl 
     fi
     if test ! -f "${CLFS_TOOLDIR}/bin/${CLFS_TARGET}-gcc" || test -n "${FORCE}";then
-        hlog info "Building GCC (basic, first pass) ..."
-        clfs_gcc_basic >> "${HTOOLCHAIN_LOG}" 2>&1
+        lrun -f clfs_gcc_basic clfs_gcc_basic
     fi
     if test ! -f "${CLFS_SYSROOT}/lib/libc.so" || test -n "${FORCE}";then
-        hlog info "Building GLIBC ..."
-        clfs_glibc >> "${HTOOLCHAIN_LOG}" 2>&1
+        lrun -f clfs_glibc clfs_glibc
     fi
     if test ! -f "${CLFS_SYSROOT}/lib/libstdc++.a" || test -n "${FORCE}";then
-        hlog info "Building LIBSTDC++ ..."
-        clfs_libstdcpp >> "${HTOOLCHAIN_LOG}" 2>&1
+        lrun -f clfs_libstdcpp clfs_libstdcpp
     fi
     if test ! -f "${CLFS_TOOLDIR}/lib/gcc/${CLFS_TARGET}/full" || test -n "${FORCE}";then
-        hlog info "Building GCC (final, second pass) ..."
-        clfs_gcc >> "${HTOOLCHAIN_LOG}" 2>&1
+        lrun -f clfs_gcc clfs_gcc
     fi
-    hlog info "Creating ${CLFS_ENV_SCRIPT} ..."
+    if true;then
+        lrun -f clfs_script clfs_script
+    fi
     hlog info "Finished: `date`"
 }
 clfs_prefix() {
@@ -375,8 +365,6 @@ clfs_script() {
 	    prefix="${CLFS_SYSROOT}/usr"  \\
 	    prefixes="${CLFS_SYSROOT}/usr ${CLFS_SYSROOT}" \\
 	    linker="${CLFS_SYSROOT}/lib/ld-linux-x86-64.so.2"
-	export LIBTOOL_FAILS_SHARED=y
-	HBUILD_VARS="\${HBUILD_VARS} LIBTOOL_FAILS_SHARED CXX_IS_BUGGY"
 	EOF
     sudo chmod +x "${CLFS_ENV_SCRIPT}"
 }
