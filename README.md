@@ -1,9 +1,5 @@
 # HTOOLCHAIN - Toolchain and cross building environment tool
 
-hcross, htoolchain-util, htoolchain-*.
-
-## Getting Started
-
 This scripts help the DevOps create custom cross building environments
 and software building/deployment tools for their organization.
 
@@ -37,13 +33,6 @@ environment variables necessary for the building scripts.
     > echo ${CC}
     x86_64-ht-linux-gnu-gcc
 
-The DevOps can use *./bin/htoolchain-util* to write scripts that download
-and build toolchains. This project includes some examples:
-
-- *./bin/htoolchain-clfs*    : x86_64-ht-linux-gnu : A simple GCC compiler.
-- *./bin/htoolchain-musl*    : x86_64-linux-musl   : MUSL libc cross compiler.
-- *./bin/htoolchain-freebsd* : x86_64-pc-freebsd12 : FreeBSD 12 LLVM cross compiler.
-
 ## Automated building and deployment scripts.
 
 You can write scripts that compile software independent of the target by using
@@ -62,8 +51,7 @@ You can write scripts that compile software independent of the target by using
     hcross -t "x86_64-linux-androideabi" build_my_project
     ...
 
-You can read some examples [here](./bin/build_example). This project contains
-some wrappers around popular build tools.
+Please use this wrappers if posible:
 
 - GNU Autotools [here](./bin/hautotools).
 - CMake [here](./bin/hcmake).
@@ -148,4 +136,94 @@ one of the following links:
 
 1. [gemini://harkadev.com/oss/](gemini://harkadev.com/oss/)
 2. [https://harkadev.com/oss/](https://harkadev.com/oss/)
+
+## Help
+
+hautotools
+
+    Usage: hautotools ...
+    
+    A wrapper around GNU Autotools projects.
+    
+    ... show              : Show configuration.
+    ... autogen           : Execute './autogen.sh' if it exists, otherwise 'autoreconf -fi'.
+    ... all CARGS...      : clean, configure, make, make install.
+    ... clean             : Execute `make clean`.
+    ... configure ARGS... : Execute the `./configure ...` step.
+    ... make              : Execute `make ...`.
+    ... install           : Execute `make install ...`.
+
+hcmake
+
+    Usage: hcmake ...
+    
+    ... show                     : Show cmake variables.
+    ... toolchain                : Print the toolchain file.
+    ... clean                    : Remove build directory.
+    ... configure CMAKE-ARGS ... : Execute `cmake`.
+    ... build      MAKE-ARGS ... : Execute `make`.
+    ... install    MAKE-ARGS ... : Execute `make install`.
+    ... all       CMAKE-ARGS ... : Execute all above.
+
+hcross
+
+    Usage: hcross [OPTS...] [CMD...]
+           hcross -w [COLLECTION]
+    
+    Execute command or function with a toolchain.
+    
+    -t l|TOOLCHAIN : Load toolchain.
+    -v             : Show variables.
+    
+    -p PREFIX    : Use this prefix.
+    -d DESTDIR   : Use this destination directory.
+    -D           : When native install dependencies.
+    
+    -w           : Run command by `build_{CMD}`
+
+hcross-env-c
+
+    Usage: hcross-env-c OPTIONS...
+    
+    Setup a cross C/C++ compilation environment.
+    
+    ... ld=PROG              : Use this linker.
+    ... ldflags=FLAGS        : Linker flags.
+    ... cflags=FLAGS         : C/C++ compiler flags.
+    ... cppflags=FLAGS       : C/C++ preprocessor flags.
+    ... type=gnu/clang       : Compiler type.
+    ... prefix=PREFIX        : Default prefix (defaults to /usr/local).
+    ... tool_prefix=TPREFIX  : Tool prefix, ie "x86_64-linux-gnu-". 
+    ... prefixes="P1 P2 ..." : Dependency search path. 
+
+hgmake
+
+    Usage: hgmake [clean] [all] [install] [OPTION=VALUE ...]
+    
+    This is a wrapper around GNU/Make that takes environment variables
+    and hbuild variables.
+
+hmeson
+
+    Usage: hmeson ...
+    
+    ... show          : Show meson variables.
+    ... toolchain.txt : Print the toolchain file.
+    
+    ... clean                    : Remove build directory.
+    ... configure MESON-ARGS ... : Execute meson.
+    ... build     NINJA-ARGS ... : Execute ninja to build.
+    ... install   NINJA-ARGS ... : Execute ninja to install.
+    
+    ... all : Clean, configure, build, install.
+
+sysroot-fix
+
+## SYSROOT-FIX
+
+    Usage: sysroot-fix -lkp DIRECTORY...
+    
+    -l : Fix links in directory.
+    -p : Fix permissions.
+    -k : Fix pkgconfig.
 

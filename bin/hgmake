@@ -37,7 +37,7 @@ hgmake() {
         esac
         shift
     done
-    for t in ${targets};do
+    for t in ${targets}; do
         case "${t}" in
             clean)   hgmake_clean   "$@"        ;;
             all)     hgmake_build   "$@"        ;;
