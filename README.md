@@ -217,7 +217,26 @@ hmeson
     
     ... all : Clean, configure, build, install.
 
+setup-devel-c-native
+
+    Usage: setup-devel-c-native ...
+    
+    Install and maintain a C/C++ toolchain for the native platform.
+    
+    ... local-enable  : Enable `/usr/local` for compiling.
+    ... local-disable : Disable `/usr/local` for compiling.
+    ... install       : Install native compilation tools.
+    ... versions      : Show native compilation tool versions.
+
 sysroot-fix
+
+## SYSROOT-FIX
+
+    Usage: sysroot-fix -lkp DIRECTORY...
+    
+    -l : Fix links in directory.
+    -p : Fix permissions.
+    -k : Fix pkgconfig.
 
 ## SYSROOT-FIX
 
