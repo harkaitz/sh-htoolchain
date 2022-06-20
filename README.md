@@ -230,19 +230,10 @@ setup-devel-c-native
 
 sysroot-fix
 
-## SYSROOT-FIX
-
     Usage: sysroot-fix -lkp DIRECTORY...
     
     -l : Fix links in directory.
     -p : Fix permissions.
     -k : Fix pkgconfig.
 
-## SYSROOT-FIX
-
-    Usage: sysroot-fix -lkp DIRECTORY...
-    
-    -l : Fix links in directory.
-    -p : Fix permissions.
-    -k : Fix pkgconfig.
 

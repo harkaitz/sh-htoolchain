@@ -23,13 +23,13 @@
 #L:  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 #L:  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 #L:  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-#r: ## SYSROOT-FIX
-#r:
+##:
 #h: Usage: $0 -lkp DIRECTORY...
 #h:
 #h: -l : Fix links in directory.
 #h: -p : Fix permissions.
 #h: -k : Fix pkgconfig.
+##:
 sysroot_fix() {
     local dir=
     case "${1}" in
