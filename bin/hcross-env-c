@@ -44,6 +44,7 @@ hcross_env_c() {
     local prefix=
     local tool_prefix=
     local path=
+    local configure_host=
     local prefixes="/usr/local /usr"
     local p= d= "$@"
 
@@ -133,11 +134,11 @@ hcross_env_c() {
         export ACLOCAL_PATH=""
         local configure=
         if test -n "${tool_prefix}";then
-            local host="`echo "${tool_prefix}" | sed 's|-$||'`"
+            local host="${configure_host:-`echo "${tool_prefix}" | sed 's|-$||'`}"
             local configure="${configure} --host=${host}"
             export CONFIGURE_HOST="${host}"
         else
-            export CONFIGURE_HOST=
+            export CONFIGURE_HOST="${configure_host}"
         fi
         local configure="${configure} --prefix=${HBUILD_PREFIX} --sysconfdir=${HBUILD_PREFIX}/etc"
         case "${tool_prefix}" in
