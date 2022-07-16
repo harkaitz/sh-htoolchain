@@ -236,4 +236,3 @@ sysroot-fix
     -p : Fix permissions.
     -k : Fix pkgconfig.
 
-
