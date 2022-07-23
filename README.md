@@ -139,6 +139,14 @@ one of the following links:
 
 ## Help
 
+gcc-info
+
+    Usage: gcc-info [-c gcc][-d]
+    
+    Get information from a gcc compiler.
+    
+    -d : List default defines.
+
 hautotools
 
     Usage: hautotools ...
