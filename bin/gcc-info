@@ -24,7 +24,7 @@
 #L:  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 #L:  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ##:
-#h: Usage: $0 [-c gcc][-d]
+#h: Usage: CC=gcc CFLAGS=-std=c99 $0 [-d]
 #h:
 #h: Get information from a gcc compiler.
 #h:
@@ -32,16 +32,15 @@
 ##:
 gcc_info() {
     local OPTIND optopt gcc="gcc" opt_d=''
-    while getopts "c:d" optopt; do
+    while getopts "d" optopt; do
         case $optopt in
-            c)  gcc="${OPTARG}" ;;
             d)  opt_d=y         ;;
             \?) return 1        ;;
         esac
     done
     shift $(( $OPTIND - 1 ))
     if test @"${opt_d}" = @"y"; then
-        "${gcc}" -dM -E - < /dev/null
+        ${CC} ${CFLAGS} -dM -E - < /dev/null
     fi
 }
 ## -----------------------------------------------------------------------------
