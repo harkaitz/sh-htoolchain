@@ -160,30 +160,30 @@ hcross_env_c() {
             if test ! -d "${p}/${d}";then
                 true
             elif test -n "${tool_prefix}";then
-                PKG_CONFIG_LIBDIR="${PKG_CONFIG_LIBDIR:+${PKG_CONFIG_LIBDIR}:}${p}/${d}"
+                export PKG_CONFIG_LIBDIR="${PKG_CONFIG_LIBDIR:+${PKG_CONFIG_LIBDIR}:}${p}/${d}"
             else
-                PKG_CONFIG_PATH="${PKG_CONFIG_PATH:+${PKG_CONFIG_PATH}:}${p}/${d}"
+                export PKG_CONFIG_PATH="${PKG_CONFIG_PATH:+${PKG_CONFIG_PATH}:}${p}/${d}"
             fi
         done
         ## autotools.
         if test -d "${p}/lib";then
-            LT_SYS_LIBRARY_PATH="${LT_SYS_LIBRARY_PATH:+${LT_SYS_LIBRARY_PATH}:}${p}/lib"
+            export LT_SYS_LIBRARY_PATH="${LT_SYS_LIBRARY_PATH:+${LT_SYS_LIBRARY_PATH}:}${p}/lib"
         fi
         if test -d "${p}/share/aclocal";then
-            ACLOCAL_PATH="${ACLOCAL_PATH:+${ACLOCAL_PATH}:}${p}/share/aclocal"
+            export ACLOCAL_PATH="${ACLOCAL_PATH:+${ACLOCAL_PATH}:}${p}/share/aclocal"
         fi
         ## Add include/library flags.
         if test ! -f "${p}/include/stdio.h" ;then
             if test -d "${p}/include";then
-                CC="${CC} -isystem ${p}/include"
+                export CC="${CC} -isystem ${p}/include"
                 if test -n "${CPP}";then
-                    CPP="${CPP} -isystem ${p}/include"
+                    export CPP="${CPP} -isystem ${p}/include"
                 fi
             fi
             if test -d "${p}/lib";then
                 case "${type}" in
-                    clang) LDFLAGS="${LDFLAGS} -L${p}/lib"                     ;;
-                    gnu)   LDFLAGS="${LDFLAGS} -Wl,-rpath,${p}/lib -L${p}/lib" ;;
+                    clang) export LDFLAGS="${LDFLAGS} -L${p}/lib"                     ;;
+                    gnu)   export LDFLAGS="${LDFLAGS} -Wl,-rpath,${p}/lib -L${p}/lib" ;;
                 esac
             fi
         fi

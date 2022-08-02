@@ -37,6 +37,7 @@
 . hpkg
 . hlog
 . hmain
+. hfile
 . hterm
 setup_devel_c_native() {
     local cmd="$1"
@@ -128,6 +129,18 @@ setup_devel_c_native_install() {
     hlog info "Installing patch ..."
     hpkg -vi -w "patch" \
          %xbps "patch"
+    ## Create sandbox script.
+    vrun sudo mkdir -p                     "/var/lib/gcc"
+    vrun sudo chown -R "`whoami`:`whoami`" "/var/lib/gcc"
+    hlog info "Creating /usr/bin/gcc-env"
+    hfile wrapper sudo "/usr/bin/gcc-env" <<-EOF
+	#!/bin/sh -e
+	. hcross-env-c
+	hcross_env_c          \\
+	type=gnu              \\
+	prefix="/var/lib/gcc" \\
+	prefixes="/usr /var/lib/gcc"
+	EOF
 }
 setup_devel_c_native_show_versions() {
     hterm vars                                                 \

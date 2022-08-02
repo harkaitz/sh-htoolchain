@@ -35,6 +35,7 @@
 #h: -p PREFIX    : Use this prefix.
 #h: -d DESTDIR   : Use this destination directory.
 #h: -D           : When native install dependencies.
+#h: -S           : Try to build static libraries/executables.
 #h:
 #h: -w           : Run command by `build_{CMD}`
 hcross() {
@@ -44,12 +45,13 @@ hcross() {
     HBUILD_VARS= HBUILD_TOOLCHAIN=
     ## Parse command line options.
     local OPTIND optopt= ops= wrap= view=
-    while getopts "t:p:d:Dwv" optopt; do # OPTARG
+    while getopts "t:p:d:DwvS" optopt; do # OPTARG
         case $optopt in
             t)  local toolchain="${OPTARG}"       ;;
             p)  export HBUILD_PREFIX="${OPTARG}"  ;;
             d)  export HBUILD_DESTDIR="${OPTARG}" ;;
             D)  export HBUILD_IDEPS="y"           ;;
+            S)  export HBUILD_PREFER_STATIC="y"   ;;
             w)  local wrap=y;;
             v)  local view=y;;
             \?) return 1;;
@@ -70,6 +72,7 @@ hcross() {
         hcross_list_programs | sed -n 's|-env$||p'
         return 1
     elif test -n "${toolchain}"; then
+        export HBUILD_TOOCHAIN="${toolchain}"
         local script="`which "${toolchain}-env" 2>/dev/null`"
         if test ! -n "${script}"; then
             hcross_error "Can't find '${toolchain}-env' in path."
@@ -87,22 +90,22 @@ hcross() {
     fi
     ## Print variables.
     if test @"${view}" = @"y"; then
-        for var in HBUILD_PREFIX HBUILD_DESTDIR HBUILD_TOOLCHAIN HBUILD_SUDO HBUILD_IDEPS ${HBUILD_VARS}; do
+        for var in HBUILD_PREFIX HBUILD_DESTDIR HBUILD_TOOLCHAIN HBUILD_SUDO HBUILD_IDEPS HBUILD_PREFER_STATIC ${HBUILD_VARS}; do
             eval 'printf "%-20s : %s\\n" "${var}" "${'"${var}"'}"'
         done
         return 0
     fi
     ## Execute in the changed environment.
     if test ! -n "${wrap}"; then
-        "$@"
+        ( set -e; "$@" )
     elif test -n "${1}"; then
         local cmd="build_`echo "${1}" | tr '-' '_' | tr '/' '_'`"; shift
-        "${cmd}" "$@"
+        ( set -e; "${cmd}" "$@" )
     else
         hcross_list_programs | sed -n 's|^build_||p'
     fi
     ## Restore environment
-    unset HBUILD_PREFIX HBUILD_DESTDIR HBUILD_TOOLCHAIN HBUILD_SUDO HBUILD_IDEPS ${HBUILD_VARS}
+    unset HBUILD_PREFIX HBUILD_DESTDIR HBUILD_TOOLCHAIN HBUILD_SUDO HBUILD_IDEPS HBUILD_PREFER_STATIC ${HBUILD_VARS}
     HBUILD_VARS="${old_vars}"
     eval "${old_env}"
 }

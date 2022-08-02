@@ -116,10 +116,11 @@ hautotools_clean() {
     env ${MAKE:-make} distclean >/dev/null 2>&1 || true
 }
 hautotools_make() {
-    hautotools_vrun   \
-        env           \
-        ${MAKE:-make} \
-        V=1           \
+    hautotools_vrun     \
+        env             \
+        ${MAKE:-make}   \
+        V=1             \
+        LIBTOOL="libtool${LIBTOOL_TAG:+ --tag=${LIBTOOL_TAG}}" \
         "$@"
 }
 hautotools_install() {
@@ -128,6 +129,7 @@ hautotools_install() {
         ${MAKE:-make}                   \
         ${MAKE_INSTALL_TARGET:-install} \
         V=1                             \
+        LIBTOOL="libtool"               \
         DESTDIR="${HBUILD_DESTDIR}"     \
         "$@"
 }
