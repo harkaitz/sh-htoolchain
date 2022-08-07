@@ -113,11 +113,15 @@ hcmake_calc_variables() {
             *mingw*)
                 export CMAKE_RC_COMPILER="${WINDRES}"
                 export CMAKE_RC_FLAGS="-DGCC_WINDRES"
-                export CMAKE_POSITION_INDEPENDENT_CODE="TRUE"
+                export CMAKE_POSITION_INDEPENDENT_CODE="FALSE"
                 HCMAKE_VARS="${HCMAKE_VARS}
                     CMAKE_RC_COMPILER
                     CMAKE_RC_FLAGS
                     CMAKE_POSITION_INDEPENDENT_CODE"
+                ;;
+            *tcc*)
+                export CMAKE_POSITION_INDEPENDENT_CODE="FALSE"
+                HCMAKE_VARS="${HCMAKE_VARS} CMAKE_POSITION_INDEPENDENT_CODE" 
                 ;;
             *)
                 export CMAKE_POSITION_INDEPENDENT_CODE="TRUE"
@@ -190,7 +194,6 @@ hcmake_configure() {
     vcd + "${HCMAKE_BUILD_DIR}"
     vrun env LANG=C                                        \
          cmake -Wno-dev ..                                 \
-         -DCMAKE_MAKE_PROGRAM="`which make`"               \
          -DCMAKE_TOOLCHAIN_FILE="`pwd`/toolchain.cmake"    \
          -DCMAKE_INSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}"  \
          -DCMAKE_STAGING_PREFIX="${CMAKE_STAGING_PREFIX}"  \

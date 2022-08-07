@@ -41,7 +41,7 @@
 hcross() {
     local old_env="`export -p`"
     local old_vars="${HBUILD_VARS}" var= line=
-    local toolchain="${HBUILD_TOOLCHAIN:-native}"
+    local toolchain="${HBUILD_TOOLCHAIN_DEFAULT:-native}"
     HBUILD_VARS= HBUILD_TOOLCHAIN=
     ## Parse command line options.
     local OPTIND optopt= ops= wrap= view=
@@ -69,7 +69,7 @@ hcross() {
             export HBUILD_SUDO=env
         fi
     elif test @"${toolchain}" = @"l"; then
-        hcross_list_programs | sed -n 's|-env$||p'
+        hcross_list_programs | sed -n 's|-env$||p' | sort | uniq
         return 1
     elif test -n "${toolchain}"; then
         export HBUILD_TOOCHAIN="${toolchain}"

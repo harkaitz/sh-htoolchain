@@ -84,16 +84,20 @@ hcross_env_c() {
             HBUILD_DESTDIR   HBUILD_PREFIX        HBUILD_TOOLCHAIN
             HBUILD_SUDO      HBUILD_TOOL_PREFIX   HBUILD_PREFIXES"
     fi
-    if true;then
+    if true; then
         ## Compiler.
-        if test @"${type}" = @"gnu";then
+        if test @"${type}" = @"gnu"; then
             export CC="${tool_prefix}gcc ${cflags} ${cppflags}"           
             export CXX="${tool_prefix}g++ ${cflags} ${cppflags}"
             export CPP="${tool_prefix}cpp ${cppflags}"
-        elif test @"${type}" = @"clang";then
+        elif test @"${type}" = @"clang"; then
             export CC="${tool_prefix}clang ${cflags} ${cppflags}"           
             export CXX="${tool_prefix}clang++ ${cflags} ${cppflags}"
             export CPP="${tool_prefix}clang -E ${cflags} ${cppflags}"
+        elif test @"${type}" = @"tcc"; then
+            export CC="tcc ${cflags} ${cppflags}"           
+            export CXX="false"
+            export CPP="tcc -E ${cflags} ${cppflags}"
         else
             hlog error "Invalid compiler type: '${type}'."
             return 1
@@ -142,7 +146,7 @@ hcross_env_c() {
         fi
         local configure="${configure} --prefix=${HBUILD_PREFIX} --sysconfdir=${HBUILD_PREFIX}/etc"
         case "${tool_prefix}" in
-            *mingw*) true;;
+            *mingw*|*tcc*) true;;
             *)       local configure="${configure} --with-pic";;
         esac
         export CONFIGURE_FLAGS="${configure}"
@@ -152,7 +156,7 @@ hcross_env_c() {
             ACLOCAL_PATH        CONFIGURE_HOST    CONFIGURE_FLAGS"
     fi
     
-    for p in ${prefixes};do
+    for p in ${prefixes}; do
         ## Skip prefixes that do not exist.
         if test ! -d "${p}";then continue;fi
         ## pkgconfig.
@@ -173,21 +177,22 @@ hcross_env_c() {
             export ACLOCAL_PATH="${ACLOCAL_PATH:+${ACLOCAL_PATH}:}${p}/share/aclocal"
         fi
         ## Add include/library flags.
-        if test ! -f "${p}/include/stdio.h" ;then
-            if test -d "${p}/include";then
+        if test ! -f "${p}/include/stdio.h" ; then
+            if test -d "${p}/include"; then
                 export CC="${CC} -isystem ${p}/include"
-                if test -n "${CPP}";then
+                if test -n "${CPP}"; then
                     export CPP="${CPP} -isystem ${p}/include"
                 fi
             fi
-            if test -d "${p}/lib";then
-                case "${type}" in
-                    clang) export LDFLAGS="${LDFLAGS} -L${p}/lib"                     ;;
-                    gnu)   export LDFLAGS="${LDFLAGS} -Wl,-rpath,${p}/lib -L${p}/lib" ;;
-                esac
-            fi
+            for d in "${p}/lib64" "${p}/lib"; do
+                if test -d "${d}"; then
+                   case "${type}" in
+                       clang|tcc) export LDFLAGS="${LDFLAGS} -L${d}"                 ;;
+                       gnu)       export LDFLAGS="${LDFLAGS} -Wl,-rpath,${d} -L${d}" ;;
+                   esac
+                fi
+            done
         fi
-        
     done
 }
 

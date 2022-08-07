@@ -32,6 +32,8 @@
 #h: ... local-disable : Disable `/usr/local` for compiling.
 #h: ... install       : Install native compilation tools.
 #h: ... versions      : Show native compilation tool versions.
+#h:
+#h: ... mingw32 i|r   : Install/Remove MS Windows 32 compiler.
 ##:
 . vrun
 . hpkg
@@ -43,11 +45,15 @@ setup_devel_c_native() {
     local cmd="$1"
     shift
     case "${cmd}" in
+        ##
         local-enable)  setup_devel_c_native_local_enable  ;;
         local-disable) setup_devel_c_native_local_disable ;;
         install)       setup_devel_c_native_install       ;;
         versions)      setup_devel_c_native_calc_versions
                        setup_devel_c_native_show_versions ;;
+        ##
+        mingw32)       mingw32_setup "$@" ;;
+        ##
         *)             hlog error "Invalid argument: ${cmd}."
                        return 1;;
     esac
@@ -202,7 +208,62 @@ setup_devel_c_native_calc_versions() {
     V_AUTOPOINT="`  autopoint  --version 2>/dev/null | head -n1  `"
     V_GETTEXT="`    gettext    --version 2>/dev/null | head -n1  `"
 }
-
-
+## -----------------------------------------------------------------------------
+mingw32_setup() {
+    local pkgs='
+    %xbps
+    cross-i686-w64-mingw32
+    cross-i686-w64-mingw32-crt
+    cross-x86_64-w64-mingw32
+    cross-x86_64-w64-mingw32-crt
+    '
+    local uu="`whoami`:`whoami`"
+    local t32="i686-w64-mingw32"   s32="/usr/i686-w64-mingw32"
+    local t64="x86_64-w64-mingw32" s64="/usr/x86_64-w64-mingw32"
+    case "${1:-i}" in
+        install|i)
+            hpkg -m 'Installing Mingw32 32/64 ...' \
+                 -w i686-w64-mingw32-gcc     \
+                 -w x86_64-w64-mingw32-gcc   \
+                 -i ${pkgs}
+            vrun sudo mkdir -p         "/var/lib/gcc-${t64}" "/var/lib/gcc-${t32}"
+            vrun sudo chown -R "${uu}" "/var/lib/gcc-${t64}" "/var/lib/gcc-${t32}"
+            hlog info "Creating /usr/bin/${t64}-env ..."
+            hfile wrapper sudo "/usr/bin/${t64}-env" <<-EOF
+		#!/bin/sh -e
+		. hcross-env-c
+		hcross_env_c                     \\
+		    type=gnu                     \\
+		    tool_prefix="${t64}-"        \\
+		    prefix="/var/lib/gcc-${t64}" \\
+		    prefixes="/var/lib/gcc-${t64} ${s64}"
+		EOF
+            hlog info "Creating /usr/bin/${t32}-env ..."
+            hfile wrapper sudo "/usr/bin/${t32}-env" <<-EOF
+		#!/bin/sh -e
+		. hcross-env-c
+		hcross_env_c                       \\
+		    type=gnu                       \\
+		    tool_prefix="${t32}-"          \\
+		    prefix="/var/lib/gcc-${t32}"   \\
+		    prefixes="/var/lib/gcc-${t32} ${s32}"
+		EOF
+            
+            ;;
+        remove|r)
+            hpkg -m 'Removing Mingw32 32/64 ...' \
+                 -u ${pkgs}
+            vrun sudo rm -rf \
+                 "/var/lib/gcc-${t64}" \
+                 "/var/lib/gcc-${t32}" \
+                 "/usr/bin/${t64}-env" \
+                 "/usr/bin/${t32}-env"
+            ;;
+        *)
+            hlog error "Invalid argument: ${1}."
+            return 1
+            ;;
+    esac
+}
 ## -----------------------------------------------------------------------------
 hmain -f "setup-devel-c-native" setup_devel_c_native "$@"

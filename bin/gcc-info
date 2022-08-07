@@ -31,7 +31,7 @@
 #h: -d : List default defines.
 ##:
 gcc_info() {
-    local OPTIND optopt gcc="gcc" opt_d=''
+    local OPTIND optopt opt_d=''
     while getopts "d" optopt; do
         case $optopt in
             d)  opt_d=y         ;;
@@ -40,7 +40,7 @@ gcc_info() {
     done
     shift $(( $OPTIND - 1 ))
     if test @"${opt_d}" = @"y"; then
-        ${CC} ${CFLAGS} -dM -E - < /dev/null
+        ${CC:-gcc} ${CFLAGS} -dM -E - < /dev/null
     fi
 }
 ## -----------------------------------------------------------------------------
