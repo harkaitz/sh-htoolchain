@@ -15,5 +15,5 @@ endif
 install: install-sh
 install-sh:
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
-	cp bin/hautotools bin/hcmake bin/setup-devel-c-native bin/gcc-info bin/hgmake bin/hmeson bin/hcross bin/sysroot-fix bin/hcross-env-c  $(DESTDIR)$(PREFIX)/bin
+	cp bin/hautotools bin/hcmake bin/setup-devel-c-native bin/gcc-info bin/hgmake bin/htest bin/hmeson bin/hcross bin/sysroot-fix bin/hcross-env-c  $(DESTDIR)$(PREFIX)/bin
 ## -- install-sh --

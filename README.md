@@ -141,7 +141,7 @@ one of the following links:
 
 gcc-info
 
-    Usage: gcc-info [-c gcc][-d]
+    Usage: CC=gcc CFLAGS=-std=c99 gcc-info [-d]
     
     Get information from a gcc compiler.
     
@@ -186,6 +186,7 @@ hcross
     -p PREFIX    : Use this prefix.
     -d DESTDIR   : Use this destination directory.
     -D           : When native install dependencies.
+    -S           : Try to build static libraries/executables.
     
     -w           : Run command by `build_{CMD}`
 
@@ -225,6 +226,33 @@ hmeson
     
     ... all : Clean, configure, build, install.
 
+htest
+
+    Usage: htest [SUITE [TEST|all]]
+    
+    This program helps launching tests written in bash(1) language.
+    
+    A "test suite" is defined as a directory, a "test" is defined as
+    a bash script inside that directory. "htest" searches tests in this
+    order: 
+    
+        - PWD/tests                   : It gets the name "local".
+        - /usr/local/share/NAME/tests : Installed on /usr/local.
+        - /usr/share/NAME/tests       : Installed on /usr
+    
+    A "test" must end in ".sh". It runs in the following environment.
+    
+        - PATH+= The directory containing the tests directory.
+        - PATH+= The tests directory.
+        - PATH+= The directory named "build" next to "tests" dir.
+        - PATH+= /usr/local/bin.
+        - PWD  = The directory the test is placed in.
+    
+    Available commands:
+    
+    ... ls    [SUITE] [REGEX] : List test suites.
+    ...       SUITE   [REGEX] : Run tests in suite.
+
 setup-devel-c-native
 
     Usage: setup-devel-c-native ...
@@ -235,6 +263,8 @@ setup-devel-c-native
     ... local-disable : Disable `/usr/local` for compiling.
     ... install       : Install native compilation tools.
     ... versions      : Show native compilation tool versions.
+    
+    ... mingw32 i|r   : Install/Remove MS Windows 32 compiler.
 
 sysroot-fix
 
