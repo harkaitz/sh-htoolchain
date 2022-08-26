@@ -36,6 +36,7 @@
 #h: -d DESTDIR   : Use this destination directory.
 #h: -D           : When native install dependencies.
 #h: -S           : Try to build static libraries/executables.
+#h: -R           : Use sudo when installing.
 #h:
 #h: -w           : Run command by `build_{CMD}`
 hcross() {
@@ -45,13 +46,14 @@ hcross() {
     HBUILD_VARS= HBUILD_TOOLCHAIN=
     ## Parse command line options.
     local OPTIND optopt= ops= wrap= view=
-    while getopts "t:p:d:DwvS" optopt; do # OPTARG
+    while getopts "t:p:d:DwvSR" optopt; do # OPTARG
         case $optopt in
             t)  local toolchain="${OPTARG}"       ;;
             p)  export HBUILD_PREFIX="${OPTARG}"  ;;
             d)  export HBUILD_DESTDIR="${OPTARG}" ;;
             D)  export HBUILD_IDEPS="y"           ;;
             S)  export HBUILD_PREFER_STATIC="y"   ;;
+            R)  export HBUILD_SUDO="sudo"         ;;
             w)  local wrap=y;;
             v)  local view=y;;
             \?) return 1;;
@@ -64,9 +66,9 @@ hcross() {
         export HBUILD_PREFIX="${HBUILD_PREFIX:-/usr/local}"
         if test   -e "${HBUILD_DESTDIR}${HBUILD_PREFIX}" && \
            test ! -w "${HBUILD_DESTDIR}${HBUILD_PREFIX}"; then
-            export HBUILD_SUDO=sudo
+            export HBUILD_SUDO="${HBUILD_SUDO:-sudo}"
         else
-            export HBUILD_SUDO=env
+            export HBUILD_SUDO="${HBUILD_SUDO:-env}"
         fi
     elif test @"${toolchain}" = @"l"; then
         hcross_list_programs | sed -n 's|-env$||p' | sort | uniq

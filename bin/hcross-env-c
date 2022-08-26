@@ -113,12 +113,16 @@ hcross_env_c() {
         export LD="${ld:-${tool_prefix}ld}"            
         export RANLIB="${tool_prefix}ranlib"
         export READELF="${tool_prefix}readelf"
-        if which "${tool_prefix}strip" >/dev/null 2>&1;then
+        if which "${tool_prefix}strip" >/dev/null 2>&1; then
             export STRIP="${tool_prefix}strip"
         else
             export STRIP="strip"
         fi
-        export WINDRES="${tool_prefix}windres"  
+        case "${tool_prefix}" in
+            *mingw*|*windows*)
+                export WINDRES="${tool_prefix}windres"
+                ;;
+        esac
         export OBJCOPY="${tool_prefix}objcopy"
         export OBJDUMP="${tool_prefix}objdump" 
         export NM="${tool_prefix}nm"
