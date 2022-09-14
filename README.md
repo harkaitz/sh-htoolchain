@@ -187,6 +187,7 @@ hcross
     -d DESTDIR   : Use this destination directory.
     -D           : When native install dependencies.
     -S           : Try to build static libraries/executables.
+    -R           : Use sudo when installing.
     
     -w           : Run command by `build_{CMD}`
 
@@ -252,19 +253,6 @@ htest
     
     ... ls    [SUITE] [REGEX] : List test suites.
     ...       SUITE   [REGEX] : Run tests in suite.
-
-setup-devel-c-native
-
-    Usage: setup-devel-c-native ...
-    
-    Install and maintain a C/C++ toolchain for the native platform.
-    
-    ... local-enable  : Enable `/usr/local` for compiling.
-    ... local-disable : Disable `/usr/local` for compiling.
-    ... install       : Install native compilation tools.
-    ... versions      : Show native compilation tool versions.
-    
-    ... mingw32 i|r   : Install/Remove MS Windows 32 compiler.
 
 sysroot-fix
 
