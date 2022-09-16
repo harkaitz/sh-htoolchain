@@ -1,3 +1,5 @@
 ## -- AUTO --
-. auto-sh-mit
+auto() {
+    auto-sh-mit "$@"
+}
 ## -- AUTO --
