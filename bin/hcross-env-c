@@ -48,20 +48,20 @@ hcross_env_c() {
     local prefixes="/usr/local /usr"
     local p= d= "$@"
 
-    if test -n "${path}";then
+    if test -n "${path}"; then
         export PATH="${path}:${PATH}"
     fi
-    if true;then
+    if true; then
 
         ## Installation directories.
-        if test -n "${HBUILD_DESTDIR}";then
+        if test -n "${HBUILD_DESTDIR}"; then
             export HBUILD_DESTDIR="${HBUILD_DESTDIR}"
             export HBUILD_PREFIX="${HBUILD_PREFIX:-/usr/local}"
         else
             export HBUILD_DESTDIR=
             export HBUILD_PREFIX="${HBUILD_PREFIX:-${prefix:-/usr/local}}"
         fi
-        if test -n "${tool_prefix}";then
+        if test -n "${tool_prefix}"; then
             export HBUILD_TOOLCHAIN="`echo "${tool_prefix}" | sed 's|-$||'`"
         else
             export HBUILD_TOOLCHAIN="native"
@@ -69,7 +69,7 @@ hcross_env_c() {
 
         ## Whether to install with sudo.
         if test   -e "${HBUILD_DESTDIR}${HBUILD_PREFIX}" && \
-           test ! -w "${HBUILD_DESTDIR}${HBUILD_PREFIX}";then
+           test ! -w "${HBUILD_DESTDIR}${HBUILD_PREFIX}"; then
             export HBUILD_SUDO=sudo
         else
             export HBUILD_SUDO=env
@@ -103,7 +103,7 @@ hcross_env_c() {
             return 1
         fi
         ## Configuration.
-        if test -d "${HBUILD_INCLUDE}";then
+        if test -d "${HBUILD_INCLUDE}"; then
             CC="${CC} -I${HBUILD_INCLUDE} -DHAVE_HBUILD"
             CXX="${CXX} -I${HBUILD_INCLUDE} -DHAVE_HBUILD"
         fi
@@ -127,14 +127,14 @@ hcross_env_c() {
         export OBJDUMP="${tool_prefix}objdump" 
         export NM="${tool_prefix}nm"
         export LDFLAGS="${ldflags}"
-        if test -n "${linker}";then
+        if test -n "${linker}"; then
             LDFLAGS="${LDFLAGS} -Wl,--dynamic-linker=${linker}"
         fi
         HBUILD_VARS="${HBUILD_VARS}
             CC CXX CPP AR AS LD RANLIB READELF STRIP WINDRES
             OBJCOPY OBJDUMP NM LDFLAGS"
     fi
-    if true;then
+    if true; then
         export HBUILD_PREFIXES="${prefixes}"
         export PKG_CONFIG_LIBDIR=""
         export PKG_CONFIG_PATH=""
@@ -157,14 +157,19 @@ hcross_env_c() {
         HBUILD_VARS="${HBUILD_VARS}
             HBUILD_PREFIXES
             PKG_CONFIG_LIBDIR   PKG_CONFIG_PATH   LT_SYS_LIBRARY_PATH
-            ACLOCAL_PATH        CONFIGURE_HOST    CONFIGURE_FLAGS"
+            ACLOCAL_PATH        CONFIGURE_HOST    CONFIGURE_FLAGS
+            MANPATH"
     fi
     
     for p in ${prefixes}; do
         ## Skip prefixes that do not exist.
-        if test ! -d "${p}";then continue;fi
+        if test ! -d "${p}"; then continue; fi
+        ## Manpages.
+        for d in share/man man; do
+            export MANPATH="${MANPATH:+${MANPATH}:}${p}/${d}"
+        done
         ## pkgconfig.
-        for d in lib/pkgconfig lib64/pkgconfig libdata/pkgconfig share/pkgconfig;do
+        for d in lib/pkgconfig lib64/pkgconfig libdata/pkgconfig share/pkgconfig; do
             if test ! -d "${p}/${d}";then
                 true
             elif test -n "${tool_prefix}";then
@@ -174,10 +179,10 @@ hcross_env_c() {
             fi
         done
         ## autotools.
-        if test -d "${p}/lib";then
+        if test -d "${p}/lib"; then
             export LT_SYS_LIBRARY_PATH="${LT_SYS_LIBRARY_PATH:+${LT_SYS_LIBRARY_PATH}:}${p}/lib"
         fi
-        if test -d "${p}/share/aclocal";then
+        if test -d "${p}/share/aclocal"; then
             export ACLOCAL_PATH="${ACLOCAL_PATH:+${ACLOCAL_PATH}:}${p}/share/aclocal"
         fi
         ## Add include/library flags.

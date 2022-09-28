@@ -31,6 +31,7 @@
 #h:
 #h: -t l|TOOLCHAIN : Load toolchain.
 #h: -v             : Show variables.
+#h: -o VAR=VAL     : Set variable.
 #h:
 #h: -p PREFIX    : Use this prefix.
 #h: -d DESTDIR   : Use this destination directory.
@@ -39,14 +40,15 @@
 #h: -R           : Use sudo when installing.
 #h:
 #h: -w           : Run command by `build_{CMD}`
+#h: -b           : Bootstrap to the prefix.
 hcross() {
     local old_env="`export -p`"
     local old_vars="${HBUILD_VARS}" var= line=
     local toolchain="${HBUILD_TOOLCHAIN_DEFAULT:-native}"
     HBUILD_VARS= HBUILD_TOOLCHAIN=
     ## Parse command line options.
-    local OPTIND optopt= ops= wrap= view=
-    while getopts "t:p:d:DwvSR" optopt; do # OPTARG
+    local OPTIND optopt= ops= wrap= view= bootstrap=
+    while getopts "t:p:d:DwvSRbo:" optopt; do # OPTARG
         case $optopt in
             t)  local toolchain="${OPTARG}"       ;;
             p)  export HBUILD_PREFIX="${OPTARG}"  ;;
@@ -56,6 +58,12 @@ hcross() {
             R)  export HBUILD_SUDO="sudo"         ;;
             w)  local wrap=y;;
             v)  local view=y;;
+            b)  local bootstrap=y;;
+            o)  local ovar="`echo "${OPTARG}" | sed    's|=.*||'      `"
+                local oval="`echo "${OPTARG}" | sed -n 's|^[^=]*=||p' `"
+                export "${ovar}=${oval}"
+                HBUILD_VARS="${HBUILD_VARS} ${ovar}"
+                ;;
             \?) return 1;;
         esac
     done
@@ -90,9 +98,17 @@ hcross() {
             return 1
         fi
     fi
+    local vars="
+    HBUILD_PREFIX HBUILD_DESTDIR HBUILD_TOOLCHAIN HBUILD_SUDO HBUILD_IDEPS HBUILD_PREFER_STATIC
+    ${HBUILD_VARS}
+    "
+    ## Bootstrap.
+    if test -n "${bootstrap}"; then
+        export PATH="${HBUILD_DESTDIR}${HBUILD_PREFIX}/bin:${HBUILD_DESTDIR}${HBUILD_PREFIX}/sbin:${PATH}"
+    fi
     ## Print variables.
     if test @"${view}" = @"y"; then
-        for var in HBUILD_PREFIX HBUILD_DESTDIR HBUILD_TOOLCHAIN HBUILD_SUDO HBUILD_IDEPS HBUILD_PREFER_STATIC ${HBUILD_VARS}; do
+        for var in ${vars}; do
             eval 'printf "%-20s : %s\\n" "${var}" "${'"${var}"'}"'
         done
         return 0
@@ -107,7 +123,7 @@ hcross() {
         hcross_list_programs | sed -n 's|^build_||p'
     fi
     ## Restore environment
-    unset HBUILD_PREFIX HBUILD_DESTDIR HBUILD_TOOLCHAIN HBUILD_SUDO HBUILD_IDEPS HBUILD_PREFER_STATIC ${HBUILD_VARS}
+    unset ${vars}
     HBUILD_VARS="${old_vars}"
     eval "${old_env}"
 }
