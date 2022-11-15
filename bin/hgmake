@@ -23,7 +23,7 @@
 #L:  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 #L:  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 #L:  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-#h: Usage: $0 [clean] [all] [install] [OPTION=VALUE ...]
+#h: Usage: $0 [options] [clean] [all] [install] [OPTION=VALUE ...]
 #h:
 #h: This is a wrapper around GNU/Make that takes environment variables
 #h: and hbuild variables.
@@ -42,16 +42,14 @@ hgmake() {
             clean)   hgmake_clean   "$@"        ;;
             all)     hgmake_build   "$@"        ;;
             install) hgmake_install "$@"        ;;
+            options) hgmake_options "$@"        ;;
             *)       hgmake_build   "${t}" "$@" ;;
         esac
     done
 }
 ## -----------------------------------------------------------------------------
 hgmake_clean() {
-    env               \
-        ${MAKE:-make} \
-        clean         \
-        "$@"
+    env ${MAKE:-make} clean EXE="${EXE}" "$@"
 }
 hgmake_build() {
     env                                                      \
@@ -60,6 +58,7 @@ hgmake_build() {
         CXX="${CXX:-g++} ${CXXFLAGS} ${CPPFLAGS} ${LDFLAGS}" \
         AR="${AR:-ar}"                                       \
         LD="${LD:-ld} ${LDFLAGS}"                            \
+        EXE="${EXE}"                                         \
         PREFIX="${HBUILD_PREFIX:-/usr/local}"                \
         DESTDIR="${HBUILD_DESTDIR}" \
         "$@"
@@ -69,11 +68,27 @@ hgmake_install() {
     ${HBUILD_SUDO:-env}                        \
         ${MAKE:-make}                          \
         CC=false CXX=false AR=false LD=false   \
+        EXE="${EXE}"                           \
         PREFIX="${HBUILD_PREFIX:-/usr/local}"  \
         DESTDIR="${HBUILD_DESTDIR}"            \
         install                                \
         "$@"
 }
+hgmake_options() (
+    cc="`  echo "${CC:-gcc} ${CFLAGS} ${CPPFLAGS} ${LDFLAGS}"    | tr '\n' ' ' | sed 's|  *| |g'`"
+    cxx="` echo "${CXX:-g++} ${CXXFLAGS} ${CPPFLAGS} ${LDFLAGS}" | tr '\n' ' ' | sed 's|  *| |g'`"
+    ar="`  echo "${AR:-ar}"                                      | tr '\n' ' ' | sed 's|  *| |g'`"
+    ld="`  echo "${LD:-ld} ${LDFLAGS}"                           | tr '\n' ' ' | sed 's|  *| |g'`"
+    cat <<-EOF
+	CC  =$cc
+	CXX =$cxx
+	AR  =$ar
+	LD  =$ld
+	PREFIX  ?=${HBUILD_PREFIX:-/usr/local}
+	DESTDIR  =${HBUILD_DESTDIR}
+	EOF
+)
+
 ## -----------------------------------------------------------------------------
 SCRNAME="`basename "$0"`"
 if test @"${SCRNAME}" = @"hgmake";then

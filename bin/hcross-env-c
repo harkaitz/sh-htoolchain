@@ -36,6 +36,9 @@
 #h: ... tool_prefix=TPREFIX  : Tool prefix, ie "x86_64-linux-gnu-". 
 #h: ... prefixes="P1 P2 ..." : Dependency search path. 
 #::
+if test ! -n "$GOROOT" && test -e /etc/profile.d/zz-go.sh;then
+   . /etc/profile.d/zz-go.sh
+fi
 hcross_env_c() {
 
     local ld=
@@ -141,7 +144,7 @@ hcross_env_c() {
         export LT_SYS_LIBRARY_PATH=""
         export ACLOCAL_PATH=""
         local configure=
-        if test -n "${tool_prefix}";then
+        if test -n "${tool_prefix}"; then
             local host="${configure_host:-`echo "${tool_prefix}" | sed 's|-$||'`}"
             local configure="${configure} --host=${host}"
             export CONFIGURE_HOST="${host}"
@@ -158,12 +161,18 @@ hcross_env_c() {
             HBUILD_PREFIXES
             PKG_CONFIG_LIBDIR   PKG_CONFIG_PATH   LT_SYS_LIBRARY_PATH
             ACLOCAL_PATH        CONFIGURE_HOST    CONFIGURE_FLAGS
-            MANPATH"
+            MANPATH             SYSROOT_PATH"
     fi
     
+    export SYSROOT_PATH="$PATH"
     for p in ${prefixes}; do
         ## Skip prefixes that do not exist.
         if test ! -d "${p}"; then continue; fi
+        ## Config paths.
+        if test -d "$p/bin"; then
+            export SYSROOT_PATH="$p/bin:$SYSROOT_PATH"
+        fi
+        
         ## Manpages.
         for d in share/man man; do
             export MANPATH="${MANPATH:+${MANPATH}:}${p}/${d}"
@@ -189,6 +198,7 @@ hcross_env_c() {
         if test ! -f "${p}/include/stdio.h" ; then
             if test -d "${p}/include"; then
                 export CC="${CC} -isystem ${p}/include"
+                export CXX="${CXX} -isystem ${p}/include"
                 if test -n "${CPP}"; then
                     export CPP="${CPP} -isystem ${p}/include"
                 fi
@@ -203,6 +213,32 @@ hcross_env_c() {
             done
         fi
     done
+
+    ## -----------------------------------------------
+    ## ---- OTHER ------------------------------------
+    ## -----------------------------------------------
+    case "${tool_prefix}" in
+        *mingw*) export EXE=.exe;;
+    esac
+    
+    ## -----------------------------------------------
+    ## ---- GO SUPPORT -------------------------------
+    ## -----------------------------------------------
+    ## List in `go tool dist list`. (TODO, complete)
+    case "${tool_prefix}" in
+        *mingw*|*windows*) export GOOS=windows;;
+        *linux*)           export GOOS=linux;;
+    esac
+    case "${tool_prefix}" in 
+        *x86_64*) export GOARCH=amd64;;
+    esac
+    
+    export CGO_CFLAGS="${CFLAGS}"
+    export CGO_CXXFLAGS="${CFLAGS}"
+    export CGO_LDFLAGS="${HBUILD_PREFER_STATIC:+ -static} ${LDFLAGS}"
+    HBUILD_VARS="${HBUILD_VARS}
+        GOOS GOARCH
+        CGO_CFLAGS CGO_CXXFLAGS CGO_LDFLAGS"
 }
 
 ## -----------------------------------------------------------------------------

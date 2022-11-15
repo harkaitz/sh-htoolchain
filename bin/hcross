@@ -38,17 +38,18 @@
 #h: -D           : When native install dependencies.
 #h: -S           : Try to build static libraries/executables.
 #h: -R           : Use sudo when installing.
+#h: -C           : Install configuration files. (Sets HBUILD_ICONF)
 #h:
 #h: -w           : Run command by `build_{CMD}`
 #h: -b           : Bootstrap to the prefix.
-hcross() {
+hcross() (
     local old_env="`export -p`"
     local old_vars="${HBUILD_VARS}" var= line=
     local toolchain="${HBUILD_TOOLCHAIN_DEFAULT:-native}"
     HBUILD_VARS= HBUILD_TOOLCHAIN=
     ## Parse command line options.
     local OPTIND optopt= ops= wrap= view= bootstrap=
-    while getopts "t:p:d:DwvSRbo:" optopt; do # OPTARG
+    while getopts "t:p:d:DwvSRbo:C" optopt; do # OPTARG
         case $optopt in
             t)  local toolchain="${OPTARG}"       ;;
             p)  export HBUILD_PREFIX="${OPTARG}"  ;;
@@ -56,6 +57,7 @@ hcross() {
             D)  export HBUILD_IDEPS="y"           ;;
             S)  export HBUILD_PREFER_STATIC="y"   ;;
             R)  export HBUILD_SUDO="sudo"         ;;
+            C)  export HBUILD_ICONF="y"           ;;
             w)  local wrap=y;;
             v)  local view=y;;
             b)  local bootstrap=y;;
@@ -85,21 +87,21 @@ hcross() {
         export HBUILD_TOOCHAIN="${toolchain}"
         local script="`which "${toolchain}-env" 2>/dev/null`"
         if test ! -n "${script}"; then
-            hcross_error "Can't find '${toolchain}-env' in path."
+            echo "${SCRNAME}: error: Can't find '${toolchain}-env' in path." >&2
             return 1
         fi
         . "${script}"
         if test ! -n "${HBUILD_TOOLCHAIN}"; then
-            hcross_error "The script didn't set HBUILD_TOOLCHAIN."
+            echo "${SCRNAME}: error: The script didn't set HBUILD_TOOLCHAIN." >&2
             return 1
         fi
         if test ! -n "${HBUILD_PREFIX}"; then
-            hcross_error "The script didn't set HBUILD_PREFIX."
+            echo "${SCRNAME}: error: The script didn't set HBUILD_PREFIX." >&2
             return 1
         fi
     fi
     local vars="
-    HBUILD_PREFIX HBUILD_DESTDIR HBUILD_TOOLCHAIN HBUILD_SUDO HBUILD_IDEPS HBUILD_PREFER_STATIC
+    HBUILD_PREFIX HBUILD_DESTDIR HBUILD_TOOLCHAIN HBUILD_SUDO HBUILD_IDEPS HBUILD_ICONF HBUILD_PREFER_STATIC
     ${HBUILD_VARS}
     "
     ## Bootstrap.
@@ -118,7 +120,7 @@ hcross() {
         ( set -e; "$@" )
     elif test -n "${1}"; then
         local cmd="build_`echo "${1}" | tr '-' '_' | tr '/' '_'`"; shift
-        ( set -e; "${cmd}" "$@" )
+        ( set -e; export HLOG_NO_PREFIX=y; "${cmd}" "$@" )
     else
         hcross_list_programs | sed -n 's|^build_||p'
     fi
@@ -126,12 +128,8 @@ hcross() {
     unset ${vars}
     HBUILD_VARS="${old_vars}"
     eval "${old_env}"
-}
+)
 ## -----------------------------------------------------------------------------
-hcross_error() {
-    echo "${SCRNAME}: error: $*" >&2
-    return 1
-}
 hcross_list_programs() {
     printf '%s\n' "${PATH}" | tr ':' '\n' | while read line; do
         if test -d "${line}"; then

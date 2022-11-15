@@ -54,21 +54,26 @@ hautotools() {
 }
 ## -----------------------------------------------------------------------------
 hautotools_show_variables() {
-    hterm vars            \
-          -               \
-          HBUILD_PREFIX   \
-          HBUILD_DESTDIR  \
-          HBUILD_SUDO     \
-          -               \
-          MAKE            \
-          CONFIGURE       \
-          CONFIGURE_HOST  \
-          CONFIGURE_FLAGS \
-          -               \
-          CC CXX AR LD    \
-          -               \
-          CFLAGS CXXFLAGS CPPFLAGS LDFLAGS \
-          -
+    cat <<-EOF
+	HBUILD_PREFIX  : $HBUILD_PREFIX
+	HBUILD_DESTDIR : $HBUILD_DESTDIR
+	HBUILD_SUDO    : $HBUILD_SUDO
+	
+	MAKE             : $MAKE
+	CONFIGURE        : $CONFIGURE
+	CONFIGURE_HOST   : $CONFIGURE_HOST
+	CONFIGURE_FLAGS  : $CONFIGURE_FLAGS
+	
+	CC  : $CC
+	CXX : $CXX
+	AR  : $AR
+	LD  : $LD
+	
+	CFLAGS : $CFLAGS
+	CXXFLAGS : $CXXFLAGS
+	CPPFLAGS : $CPPFLAGS
+	LDFLAGS : $LDFLAGS
+	EOF
 }
 hautotools_autogen() {
     if test -f "autogen.sh";then

@@ -100,8 +100,8 @@ hmeson_print_toolchain() {
     ## Platform.
     printf '[host_machine]\n'
     case "${HBUILD_TOOLCHAIN:-native}" in
-        *linux*) printf "%-10s = '%s'\\n" system "linux";;
-        *mingw*) printf "%-10s = '%s'\\n" system "windows";;
+        *linux*|native) printf "%-10s = '%s'\\n" system "linux";;
+        *mingw*)        printf "%-10s = '%s'\\n" system "windows";;
     esac
     case "${HBUILD_TOOLCHAIN:-native}" in
         arm*)     printf "%-10s = '%s'\\n" cpu_family "arm"
@@ -112,7 +112,8 @@ hmeson_print_toolchain() {
                   printf "%-10s = '%s'\\n" cpu        "aarch64"
                   printf "%-10s = '%s'\\n" endian     "little"
                   ;;
-        x86_64*)  printf "%-10s = '%s'\\n" cpu_family "x86_64"
+        x86_64*|native)
+                  printf "%-10s = '%s'\\n" cpu_family "x86_64"
                   printf "%-10s = '%s'\\n" cpu        "x86_64"
                   printf "%-10s = '%s'\\n" endian     "little"
                   ;;          
