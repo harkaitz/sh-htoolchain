@@ -182,14 +182,17 @@ hcross
     
     -t l|TOOLCHAIN : Load toolchain.
     -v             : Show variables.
+    -o VAR=VAL     : Set variable.
     
     -p PREFIX    : Use this prefix.
     -d DESTDIR   : Use this destination directory.
     -D           : When native install dependencies.
     -S           : Try to build static libraries/executables.
     -R           : Use sudo when installing.
+    -C           : Install configuration files. (Sets HBUILD_ICONF)
     
     -w           : Run command by `build_{CMD}`
+    -b           : Bootstrap to the prefix.
 
 hcross-env-c
 
@@ -208,7 +211,7 @@ hcross-env-c
 
 hgmake
 
-    Usage: hgmake [clean] [all] [install] [OPTION=VALUE ...]
+    Usage: hgmake [options] [clean] [all] [install] [OPTION=VALUE ...]
     
     This is a wrapper around GNU/Make that takes environment variables
     and hbuild variables.
@@ -227,32 +230,14 @@ hmeson
     
     ... all : Clean, configure, build, install.
 
-htest
+img2tar
 
-    Usage: htest [SUITE [TEST|all]]
+    Usage: img2tar [-o TARFILE][-n PARTITION] DISK
     
-    This program helps launching tests written in bash(1) language.
+    From an image "DISK" get partition "PARTITION" and create
+    a tar file.
     
-    A "test suite" is defined as a directory, a "test" is defined as
-    a bash script inside that directory. "htest" searches tests in this
-    order: 
-    
-        - PWD/tests                   : It gets the name "local".
-        - /usr/local/share/NAME/tests : Installed on /usr/local.
-        - /usr/share/NAME/tests       : Installed on /usr
-    
-    A "test" must end in ".sh". It runs in the following environment.
-    
-        - PATH+= The directory containing the tests directory.
-        - PATH+= The tests directory.
-        - PATH+= The directory named "build" next to "tests" dir.
-        - PATH+= /usr/local/bin.
-        - PWD  = The directory the test is placed in.
-    
-    Available commands:
-    
-    ... ls    [SUITE] [REGEX] : List test suites.
-    ...       SUITE   [REGEX] : Run tests in suite.
+    Requires: mount/umount/losetup/tar/fdisk/tar
 
 sysroot-fix
 
