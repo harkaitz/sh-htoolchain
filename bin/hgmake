@@ -3,7 +3,7 @@
 #L:  MIT License
 #L:  
 #l:  Bug reports, feature requests to gemini|https://harkadev.com/oss
-#l:  Copyright (c) 2022 Harkaitz Agirre, harkaitz.aguirre@gmail.com
+#l:  Copyright (c) 2023 Harkaitz Agirre, harkaitz.aguirre@gmail.com
 #L:
 #L:  Permission is hereby granted, free of charge, to any person obtaining
 #L:  a copy of this software and associated documentation files (the
@@ -37,7 +37,7 @@ hgmake() {
         esac
         shift
     done
-    for t in ${targets}; do
+    for t in ${targets:-all}; do
         case "${t}" in
             clean)   hgmake_clean   "$@"        ;;
             all)     hgmake_build   "$@"        ;;
@@ -93,7 +93,7 @@ hgmake_options() (
 SCRNAME="`basename "$0"`"
 if test @"${SCRNAME}" = @"hgmake";then
     case "${1}" in
-        ''|-h|--help)
+        -h|--help)
             sed -n 's/^ *#h: \{0,1\}//p' "$0" | sed "s|\\\$0|${SCRNAME}|g"
             echo ""
             sed -n 's/^ *#l: \{0,2\}//p' "$0"

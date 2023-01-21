@@ -3,7 +3,7 @@
 #L:  MIT License
 #L:  
 #l:  Bug reports, feature requests to gemini|https://harkadev.com/oss
-#l:  Copyright (c) 2022 Harkaitz Agirre, harkaitz.aguirre@gmail.com
+#l:  Copyright (c) 2023 Harkaitz Agirre, harkaitz.aguirre@gmail.com
 #L:
 #L:  Permission is hereby granted, free of charge, to any person obtaining
 #L:  a copy of this software and associated documentation files (the
@@ -28,24 +28,34 @@
 #h:
 #h: Get information from a gcc compiler.
 #h:
-#h: -d : List default defines.
+#h: -d                 : List default defines.
+#h: -c MACRO=VALUE ... : Print the first defined.
 ##:
-gcc_info() {
-    local OPTIND optopt opt_d=''
-    while getopts "d" optopt; do
+cc_info() {
+    local OPTIND optopt opt_d='' opt_c='' n=''
+    while getopts "dc" optopt; do
         case $optopt in
             d)  opt_d=y         ;;
+            c)  opt_c=y         ;;
             \?) return 1        ;;
         esac
     done
     shift $(( $OPTIND - 1 ))
     if test @"${opt_d}" = @"y"; then
         ${CC:-gcc} ${CFLAGS} -dM -E - < /dev/null
+    else
+        for n in "$@"; do
+            local n1="`echo "$n" | sed 's|=.*||'     `"
+            local n2="`echo "$n" | sed 's|^[^=]*=||' `"
+            echo "#ifdef $n1"
+            echo "\"$n2\""
+            echo "#endif"
+        done | ${CC:-gcc} ${CFLAGS} -E - | sed '/^\#/d;/^ *$/d;s|"||g' | head -n 1
     fi
 }
 ## -----------------------------------------------------------------------------
 SCRNAME="`basename "$0"`"
-if test @"${SCRNAME}" = @"gcc-info";then
+if test @"${SCRNAME}" = @"cc-info";then
     case "${1}" in
         ''|-h|--help)
             sed -n 's/^ *#h: \{0,1\}//p' "$0" | sed "s|\\\$0|${SCRNAME}|g"
@@ -53,7 +63,7 @@ if test @"${SCRNAME}" = @"gcc-info";then
             sed -n 's/^ *#l: \{0,2\}//p' "$0"
             ;;
         *)
-            gcc_info "$@"
+            cc_info "$@"
             ;;
     esac
 fi

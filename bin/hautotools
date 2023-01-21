@@ -3,7 +3,7 @@
 #L:  MIT License
 #L:  
 #l:  Bug reports, feature requests to gemini|https://harkadev.com/oss
-#l:  Copyright (c) 2022 Harkaitz Agirre, harkaitz.aguirre@gmail.com
+#l:  Copyright (c) 2023 Harkaitz Agirre, harkaitz.aguirre@gmail.com
 #L:
 #L:  Permission is hereby granted, free of charge, to any person obtaining
 #L:  a copy of this software and associated documentation files (the
@@ -121,12 +121,7 @@ hautotools_clean() {
     env ${MAKE:-make} distclean >/dev/null 2>&1 || true
 }
 hautotools_make() {
-    hautotools_vrun     \
-        env             \
-        ${MAKE:-make}   \
-        V=1             \
-        LIBTOOL="libtool${LIBTOOL_TAG:+ --tag=${LIBTOOL_TAG}}" \
-        "$@"
+    hautotools_vrun env ${MAKE:-make}  V=1 "$@"
 }
 hautotools_install() {
     hautotools_vrun                     \
@@ -134,7 +129,6 @@ hautotools_install() {
         ${MAKE:-make}                   \
         ${MAKE_INSTALL_TARGET:-install} \
         V=1                             \
-        LIBTOOL="libtool"               \
         DESTDIR="${HBUILD_DESTDIR}"     \
         "$@"
 }
@@ -156,3 +150,4 @@ if test @"${SCRNAME}" = @"hautotools";then
             ;;
     esac
 fi
+# LIBTOOL="libtool${LIBTOOL_TAG:+ --tag=${LIBTOOL_TAG}} -W error"

@@ -139,13 +139,14 @@ one of the following links:
 
 ## Help
 
-gcc-info
+cc-info
 
-    Usage: CC=gcc CFLAGS=-std=c99 gcc-info [-d]
+    Usage: CC=gcc CFLAGS=-std=c99 cc-info [-d]
     
     Get information from a gcc compiler.
     
-    -d : List default defines.
+    -d                 : List default defines.
+    -c MACRO=VALUE ... : Print the first defined.
 
 hautotools
 

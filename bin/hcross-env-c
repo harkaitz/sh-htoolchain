@@ -3,7 +3,7 @@
 #L:  MIT License
 #L:  
 #l:  Bug reports, feature requests to gemini|https://harkadev.com/oss
-#l:  Copyright (c) 2022 Harkaitz Agirre, harkaitz.aguirre@gmail.com
+#l:  Copyright (c) 2023 Harkaitz Agirre, harkaitz.aguirre@gmail.com
 #L:
 #L:  Permission is hereby granted, free of charge, to any person obtaining
 #L:  a copy of this software and associated documentation files (the
@@ -41,7 +41,7 @@ if test ! -n "$GOROOT" && test -e /etc/profile.d/zz-go.sh;then
 fi
 hcross_env_c() {
 
-    local ld=
+    local ld= cc= cxx=
     local ldflags= cflags= cppflags= libs=
     local type=gnu
     local prefix=
@@ -90,17 +90,21 @@ hcross_env_c() {
     if true; then
         ## Compiler.
         if test @"${type}" = @"gnu"; then
-            export CC="${tool_prefix}gcc ${cflags} ${cppflags}"           
-            export CXX="${tool_prefix}g++ ${cflags} ${cppflags}"
-            export CPP="${tool_prefix}cpp ${cppflags}"
+            export CC="${cc:-${tool_prefix}gcc} ${cflags} ${cppflags}"           
+            export CXX="${cxx:-${tool_prefix}g++} ${cflags} ${cppflags}"
+            if test ! -n "${cc}" && which "${tool_prefix}cpp" >/dev/null 2>&1; then
+                export CPP="${tool_prefix}cpp ${cppflags}"
+            else
+                export CPP="${cc:-${tool_prefix}gcc} -E ${cppflags}"
+            fi
         elif test @"${type}" = @"clang"; then
-            export CC="${tool_prefix}clang ${cflags} ${cppflags}"           
-            export CXX="${tool_prefix}clang++ ${cflags} ${cppflags}"
-            export CPP="${tool_prefix}clang -E ${cflags} ${cppflags}"
+            export CC="${cc:-${tool_prefix}clang} ${cflags} ${cppflags}"           
+            export CXX="${cc:-${tool_prefix}clang++} ${cflags} ${cppflags}"
+            export CPP="${cc:-${tool_prefix}clang} -E ${cflags} ${cppflags}"
         elif test @"${type}" = @"tcc"; then
-            export CC="tcc ${cflags} ${cppflags}"           
+            export CC="${cc:-tcc} ${cflags} ${cppflags}"           
             export CXX="false"
-            export CPP="tcc -E ${cflags} ${cppflags}"
+            export CPP="${cc:-tcc} -E ${cflags} ${cppflags}"
         else
             hlog error "Invalid compiler type: '${type}'."
             return 1
@@ -111,7 +115,11 @@ hcross_env_c() {
             CXX="${CXX} -I${HBUILD_INCLUDE} -DHAVE_HBUILD"
         fi
         ## Binutils.
-        export AR="${tool_prefix}ar"           
+        if which "${tool_prefix}ar" >/dev/null 2>&1; then
+            export AR="${tool_prefix}ar"
+        else
+            export AR="ar"
+        fi
         export AS="${tool_prefix}as"
         export LD="${ld:-${tool_prefix}ld}"            
         export RANLIB="${tool_prefix}ranlib"
@@ -141,7 +149,7 @@ hcross_env_c() {
         export HBUILD_PREFIXES="${prefixes}"
         export PKG_CONFIG_LIBDIR=""
         export PKG_CONFIG_PATH=""
-        export LT_SYS_LIBRARY_PATH=""
+        #export LT_SYS_LIBRARY_PATH=""
         export ACLOCAL_PATH=""
         local configure=
         if test -n "${tool_prefix}"; then
@@ -188,9 +196,9 @@ hcross_env_c() {
             fi
         done
         ## autotools.
-        if test -d "${p}/lib"; then
-            export LT_SYS_LIBRARY_PATH="${LT_SYS_LIBRARY_PATH:+${LT_SYS_LIBRARY_PATH}:}${p}/lib"
-        fi
+        #if test -d "${p}/lib"; then
+        #    export LT_SYS_LIBRARY_PATH="${LT_SYS_LIBRARY_PATH:+${LT_SYS_LIBRARY_PATH}:}${p}/lib"
+        #fi
         if test -d "${p}/share/aclocal"; then
             export ACLOCAL_PATH="${ACLOCAL_PATH:+${ACLOCAL_PATH}:}${p}/share/aclocal"
         fi
@@ -220,6 +228,9 @@ hcross_env_c() {
     case "${tool_prefix}" in
         *mingw*) export EXE=.exe;;
     esac
+    export lt_cv_deplibs_check_method=pass_all
+    HBUILD_VARS="${HBUILD_VARS}
+        EXE lt_cv_deplibs_check_method"
     
     ## -----------------------------------------------
     ## ---- GO SUPPORT -------------------------------
@@ -232,12 +243,12 @@ hcross_env_c() {
     case "${tool_prefix}" in 
         *x86_64*) export GOARCH=amd64;;
     esac
-    
+    export CGO_ENABLED="1"
     export CGO_CFLAGS="${CFLAGS}"
     export CGO_CXXFLAGS="${CFLAGS}"
     export CGO_LDFLAGS="${HBUILD_PREFER_STATIC:+ -static} ${LDFLAGS}"
     HBUILD_VARS="${HBUILD_VARS}
-        GOOS GOARCH
+        GOOS GOARCH CGO_ENABLED
         CGO_CFLAGS CGO_CXXFLAGS CGO_LDFLAGS"
 }
 
@@ -255,3 +266,4 @@ if test @"${SCRNAME}" = @"hcross-env-c";then
             ;;
     esac
 fi
+## https://github.com/msys2/MINGW-packages/issues/7548
