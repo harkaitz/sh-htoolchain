@@ -136,7 +136,6 @@ one of the following links:
 
 1. [gemini://harkadev.com/oss/](gemini://harkadev.com/oss/)
 2. [https://harkadev.com/oss/](https://harkadev.com/oss/)
-
 ## Help
 
 cc-info
@@ -145,8 +144,10 @@ cc-info
     
     Get information from a gcc compiler.
     
-    -d                 : List default defines.
-    -c MACRO=VALUE ... : Print the first defined.
+        -d                   : List default defines.
+        -c MACRO=VALUE ...   : Print the first defined.     (CC,CFLAGS)
+        -t MACRO ...         : Check whether it is defined. (CC,CFLAGS)
+        -s @H1 @H2 @c++ TYPE : Get the size of a type. (CC,CXX,CFLAGS,CXXFLAGS)
 
 hautotools
 
@@ -177,7 +178,6 @@ hcmake
 hcross
 
     Usage: hcross [OPTS...] [CMD...]
-           hcross -w [COLLECTION]
     
     Execute command or function with a toolchain.
     
@@ -187,6 +187,7 @@ hcross
     
     -p PREFIX    : Use this prefix.
     -d DESTDIR   : Use this destination directory.
+    -T NAME      : Create tar file with `gettar(1)`.
     -D           : When native install dependencies.
     -S           : Try to build static libraries/executables.
     -R           : Use sudo when installing.
