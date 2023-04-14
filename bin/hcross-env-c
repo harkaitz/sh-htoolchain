@@ -90,12 +90,12 @@ hcross_env_c() {
     if true; then
         ## Compiler.
         if test @"${type}" = @"gnu"; then
-            export CC="${cc:-${tool_prefix}gcc} ${cflags} ${cppflags}"           
-            export CXX="${cxx:-${tool_prefix}g++} ${cflags} ${cppflags}"
-            if test ! -n "${cc}" && which "${tool_prefix}cpp" >/dev/null 2>&1; then
-                export CPP="${tool_prefix}cpp ${cppflags}"
+            export CC="${cc:-${tool_prefix}gcc${tool_suffix}} ${cflags} ${cppflags}"           
+            export CXX="${cxx:-${tool_prefix}g++${tool_suffix}} ${cflags} ${cppflags}"
+            if test ! -n "${cc}" && which "${tool_prefix}cpp${tool_suffix}" >/dev/null 2>&1; then
+                export CPP="${tool_prefix}cpp${tool_suffix} ${cppflags}"
             else
-                export CPP="${cc:-${tool_prefix}gcc} -E ${cppflags}"
+                export CPP="${cc:-${tool_prefix}gcc${tool_suffix}} -E ${cppflags}"
             fi
         elif test @"${type}" = @"clang"; then
             export CC="${cc:-${tool_prefix}clang} ${cflags} ${cppflags}"           

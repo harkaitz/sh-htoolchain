@@ -28,32 +28,88 @@
 #h:
 #h: Get information from a gcc compiler.
 #h:
-#h: -d                 : List default defines.
-#h: -c MACRO=VALUE ... : Print the first defined.
+#h:     -d                   : List default defines.
+#h:     -c MACRO=VALUE ...   : Print the first defined.     (CC,CFLAGS)
+#h:     -t MACRO ...         : Check whether it is defined. (CC,CFLAGS)
+#h:     -s @H1 @H2 @c++ TYPE : Get the size of a type. (CC,CXX,CFLAGS,CXXFLAGS)
 ##:
 cc_info() {
-    local OPTIND optopt opt_d='' opt_c='' n=''
-    while getopts "dc" optopt; do
+    local OPTIND optopt op='' n=''
+    while getopts "dcts" optopt; do
         case $optopt in
-            d)  opt_d=y         ;;
-            c)  opt_c=y         ;;
-            \?) return 1        ;;
+            d|c|t|s) op="$optopt" ;;
+            \?)    return 1     ;;
         esac
     done
     shift $(( $OPTIND - 1 ))
-    if test @"${opt_d}" = @"y"; then
-        ${CC:-gcc} ${CFLAGS} -dM -E - < /dev/null
-    else
-        for n in "$@"; do
-            local n1="`echo "$n" | sed 's|=.*||'     `"
-            local n2="`echo "$n" | sed 's|^[^=]*=||' `"
-            echo "#ifdef $n1"
-            echo "\"$n2\""
-            echo "#endif"
-        done | ${CC:-gcc} ${CFLAGS} -E - | sed '/^\#/d;/^ *$/d;s|"||g' | head -n 1
-    fi
+    case "${op}" in
+        d) cc_info_list_defines      ;;
+        c) cc_info_print_first  "$@" ;;
+        t) test -n "`cc_info_find_first "$@" || true`";;
+        s) cc_info_print_size   "$@" ;;
+    esac
 }
-## -----------------------------------------------------------------------------
+cc_info_list_defines() {
+    ${CC:-gcc} ${CFLAGS} -dM -E - < /dev/null
+}
+cc_info_print_first() {
+    for n in "$@"; do
+        n1="`echo "$n" | sed 's|=.*||'     `"
+        n2="`echo "$n" | sed 's|^[^=]*=||' `"
+        echo "#ifdef $n1"
+        echo "\"$n2\""
+        echo "#endif"
+    done | ${CC:-gcc} ${CFLAGS} -E - | sed '/^\#/d;/^ *$/d;s|"||g' | head -n 1
+}
+cc_info_find_first() {
+    for n in "$@"; do
+        n1="`echo "$n" | sed 's|=.*||'     `"
+        echo "#ifdef $n1"
+        echo "\"$n1\""
+        echo "#endif"
+    done | ${CC:-gcc} ${CFLAGS} -E - | sed '/^\#/d;/^ *$/d;s|"||g' | head -n 1
+}
+cc_info_print_size() {
+    local x="`mktemp`" lang=c
+    while test -n "$1"; do
+        if test @"${1}" = @"@c++"; then
+            local lang=c++
+            shift
+            continue
+        fi
+        local h="`echo "${1}" | sed -n 's|@||p'`"
+        if test -n "${h}"; then
+            if test -e "${h}"; then
+                echo "#include \"`pwd`/${h}\"" >> "${x}.c"
+            else
+                echo "#include <${h}>" >> "${x}.c"
+            fi
+            shift
+            continue
+        fi
+        cat <<-EOF >> "${x}.c"
+	#include <stdio.h>
+	int main(int _argc, char *_argv[]) {
+	    printf("%-4s %li Bytes %li Bits\n", _argv[1], sizeof($*), sizeof($*)*8);
+	    return 0;
+	}
+	EOF
+        break
+    done
+    case "${lang}" in
+        c)   ${CC:-gcc} ${CFLAGS} -o "${x}" -x c   "${x}.c"
+             "${x}" "c"
+             ;;
+        c++)
+             ${CC:-g++} ${CXXFLAGS} -o "${x}" -x c++ "${x}.c"
+             "${x}" "c++"
+             ;;
+    esac
+}
+
+
+
+## -------------------------------------------------------------------
 SCRNAME="`basename "$0"`"
 if test @"${SCRNAME}" = @"cc-info";then
     case "${1}" in

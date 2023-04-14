@@ -25,7 +25,6 @@
 #L:  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ##:
 #h: Usage: $0 [OPTS...] [CMD...]
-#h:        $0 -w [COLLECTION]
 #h:
 #h: Execute command or function with a toolchain.
 #h:
@@ -35,6 +34,7 @@
 #h:
 #h: -p PREFIX    : Use this prefix.
 #h: -d DESTDIR   : Use this destination directory.
+#h: -T NAME      : Create tar file with `gettar(1)`.
 #h: -D           : When native install dependencies.
 #h: -S           : Try to build static libraries/executables.
 #h: -R           : Use sudo when installing.
@@ -46,10 +46,11 @@ hcross() (
     local old_env="`export -p`"
     local old_vars="${HBUILD_VARS}" var= line=
     local toolchain="${HBUILD_TOOLCHAIN_DEFAULT:-native}"
+    local tarname=""
     HBUILD_VARS= HBUILD_TOOLCHAIN=
     ## Parse command line options.
     local OPTIND optopt= ops= wrap= view= bootstrap=
-    while getopts "t:p:d:DwvSRbo:C" optopt; do # OPTARG
+    while getopts "t:p:d:DwvSRbo:CT:" optopt; do
         case $optopt in
             t)  local toolchain="${OPTARG}"       ;;
             p)  export HBUILD_PREFIX="${OPTARG}"  ;;
@@ -58,6 +59,7 @@ hcross() (
             S)  export HBUILD_PREFER_STATIC="y"   ;;
             R)  export HBUILD_SUDO="sudo"         ;;
             C)  export HBUILD_ICONF="y"           ;;
+            T)  local tarname="${OPTARG}";;
             w)  local wrap=y;;
             v)  local view=y;;
             b)  local bootstrap=y;;
@@ -70,6 +72,11 @@ hcross() (
         esac
     done
     shift $(( $OPTIND - 1 ))
+    ## Create a tar.
+    if test -n "${tarname}"; then
+        export HBUILD_DESTDIR="`gettar-tmpdir "${tarname}" || true`"
+        test -n "${HBUILD_DESTDIR}"
+    fi
     ## Search and set environment.
     if test @"${toolchain}" = @"native"; then
         export HBUILD_TOOLCHAIN=native
@@ -123,6 +130,10 @@ hcross() (
         ( set -e; export HLOG_NO_PREFIX=y; "${cmd}" "$@" )
     else
         hcross_list_programs | sed -n 's|^build_||p'
+    fi
+    ## Create tar.
+    if test -n "${tarname}"; then
+        gettar-create -v "${HBUILD_DESTDIR}"
     fi
     ## Restore environment
     unset ${vars}
