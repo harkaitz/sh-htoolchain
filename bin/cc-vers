@@ -1,0 +1,78 @@
+#!/bin/sh -e
+##:
+#h: Usage: cc-vers
+#h:
+#h: Print versions of C environment utilities.
+##:
+cc_vers() {
+    printf '\n## RUNTIME\n\n'
+    printf '%-12s : %s\n' \
+           V_GLIBC   "${V_GLIBC}"       V_BASH   "${V_BASH}"     \
+           V_CHOWN   "${V_CHOWN}"       V_DIFF   "${V_DIFF}"     \
+           V_FIND    "${V_FIND}"        V_GAWK   "${V_GAWK}"     \
+           V_PATCH   "${V_PATCH}"       V_SED    "${V_SED}"      \
+           V_TAR     "${V_TAR}"         V_XZ     "${V_XZ}"       \
+           V_GREP    "${V_GREP}"        V_GZIP   "${V_GZIP}"     \
+           V_BZIP2   "${V_BZIP2}"       V_FILE   "${V_FILE}"     \
+           V_M4      "${V_M4}"          V_BC     "${V_BC}"
+    printf '\n## COMPILERS\n\n'
+    printf '%-12s : %s\n' \
+           V_BISON       "${V_BISON}"       V_GCC       "${V_GCC}"        \
+           V_GPP         "${V_GPP}"         V_CLANG     "${V_CLANG}"      \
+           V_CLANGPP     "${V_CLANGPP}"     V_LD        "${V_LD}"         \
+           V_NASM        "${V_NASM}"        V_MAKE      "${V_MAKE}"       \
+           V_BMAKE       "${V_BMAKE}"       V_CMAKE     "${V_CMAKE}"      \
+           V_NINJA       "${V_NINJA}"       V_MESON     "${V_MESON}"      \
+           V_MAKEINFO    "${V_MAKEINFO}"    V_TIC       "${V_TIC}"        \
+           V_PKG_CONFIG  "${V_PKG_CONFIG}"  V_AUTOPOINT "${V_AUTOPOINT}"  \
+           V_GETTEXT     "${V_GETTEXT}"
+}
+cc_vers_calc_variables() {
+    local uname_s="`uname -s`"
+    if test @"${uname_s}" = @"Linux";then
+        V_GLIBC="$(                           \
+            ldd $(which ${SHELL}) 2>/dev/null \
+            | grep libc.so                    \
+            | cut -d ' ' -f 3                 \
+            | ${SHELL}                        \
+            | head -n 1                       )"
+    else
+        V_GLIBC=""
+    fi
+    V_BASH="$(       bash       --version 2>/dev/null | head -n1 | cut -d" " -f2-4 || true)"
+    V_CHOWN="$(      chown      --version 2>/dev/null | head -n1  || true)"
+    V_DIFF="$(       diff       --version 2>/dev/null | head -n1  || true)"
+    V_FIND="$(       find       --version 2>/dev/null | head -n1  || true)"
+    V_GAWK="$(       gawk       --version 2>/dev/null | head -n1  || true)"
+    V_PATCH="$(      patch      --version 2>/dev/null | head -n1  || true)"
+    V_SED="$(        sed        --version 2>/dev/null | head -n1  || true)"
+    V_TAR="$(        tar        --version 2>/dev/null | head -n1  || true)"
+    V_XZ="$(         xz         --version 2>/dev/null | head -n1  || true)"
+    V_GREP="$(       grep       --version 2>/dev/null | head -n1  || true)"
+    V_GZIP="$(       gzip       --version 2>/dev/null | head -n1  || true)"
+    V_BZIP2="$(      bzip2      --version 2>/dev/null 2>&1 < /dev/null | head -n1 | cut -d" " -f1,6- || true)"
+    V_FILE="$(       file       --version 2>/dev/null | head -n1  || true)"
+    V_M4="$(         m4         --version 2>/dev/null | head -n1  || true)"
+    V_BC="$(         bc         --version 2>/dev/null | head -n1  || true)"
+    V_BISON="$(      bison      --version 2>/dev/null | head -n1  || true)"
+    V_GCC="$(        gcc        --version 2>/dev/null | head -n1  || true)"
+    V_GPP="$(        g++        --version 2>/dev/null | head -n1  || true)"
+    V_CLANG="$(      clang      --version 2>/dev/null | head -n1  || true)"
+    V_CLANGPP="$(    clang++    --version 2>/dev/null | head -n1  || true)"
+    V_LD="$(         ld         --version 2>/dev/null | head -n1  || true)"
+    V_NASM="$(       nasm       --version 2>/dev/null | head -n1  || true)"
+    V_MAKE="$(       make       --version 2>/dev/null | head -n1  || true)"
+    V_BMAKE="$(      which bmake          2>/dev/null             || true)"
+    V_CMAKE="$(      cmake      --version 2>/dev/null | head -n1  || true)"
+    V_NINJA="$(      ninja      --version 2>/dev/null | head -n1  || true)"
+    V_MESON="$(      meson      --version                         || true)"
+    V_MAKEINFO="$(   makeinfo   --version 2>/dev/null | head -n1  || true)"
+    V_TIC="$(        tic        -V        2>/dev/null             || true)"
+    V_PKG_CONFIG="$( pkg-config --version 2>/dev/null             || true)"
+    V_AUTOPOINT="$(  autopoint  --version 2>/dev/null | head -n1  || true)"
+    V_GETTEXT="$(    gettext    --version 2>/dev/null | head -n1  || true)"
+}
+cc_vers_calc_variables
+if test @"$(basename "$0")" = @"cc-vers"; then
+    cc_vers "$@"
+fi

@@ -1,9 +1,11 @@
-DESTDIR     =
-PREFIX      =/usr/local
+PROJECT=sh-htoolchain
+VERSION=1.0.0
+PREFIX=/usr/local
 all:
 clean:
 install:
-## -- install-sh --
+
+## -- BLOCK:sh --
 install: install-sh
 install-sh:
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
@@ -12,14 +14,18 @@ install-sh:
 	cp bin/sysroot-fix      $(DESTDIR)$(PREFIX)/bin
 	cp bin/hgmake           $(DESTDIR)$(PREFIX)/bin
 	cp bin/hmeson           $(DESTDIR)$(PREFIX)/bin
+	cp bin/cc-vers          $(DESTDIR)$(PREFIX)/bin
 	cp bin/hcross-env-c     $(DESTDIR)$(PREFIX)/bin
 	cp bin/hcross           $(DESTDIR)$(PREFIX)/bin
 	cp bin/hcmake           $(DESTDIR)$(PREFIX)/bin
 	cp bin/cc-info          $(DESTDIR)$(PREFIX)/bin
-## -- install-sh --
-## -- license --
+## -- BLOCK:sh --
+## -- BLOCK:license --
 install: install-license
-install-license: LICENSE
-	mkdir -p $(DESTDIR)$(PREFIX)/share/doc/sh-htoolchain
-	cp LICENSE $(DESTDIR)$(PREFIX)/share/doc/sh-htoolchain
-## -- license --
+install-license: 
+	mkdir -p $(DESTDIR)$(PREFIX)/share/doc/$(PROJECT)
+	cp LICENSE README.md $(DESTDIR)$(PREFIX)/share/doc/$(PROJECT)
+update: update-license
+update-license:
+	ssnip README.md
+## -- BLOCK:license --

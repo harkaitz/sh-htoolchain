@@ -149,6 +149,19 @@ cc-info
         -t MACRO ...         : Check whether it is defined. (CC,CFLAGS)
         -s @H1 @H2 @c++ TYPE : Get the size of a type. (CC,CXX,CFLAGS,CXXFLAGS)
 
+cc-vers
+
+    Usage: cc-vers
+    
+    Print versions of C environment utilities.
+
+gcc-env
+
+    Usage: gcc-env
+    
+    Compilation environment to /var/lib/gcc prefix. It also searches
+    for dependencies in /usr.
+
 hautotools
 
     Usage: hautotools ...

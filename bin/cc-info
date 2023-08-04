@@ -1,25 +1,4 @@
 #!/bin/sh -e
-#L:  MIT License
-#L:
-#l:  Copyright (c) 2023 Harkaitz Agirre, harkaitz.aguirre@gmail.com
-#L:
-#L:  Permission is hereby granted, free of charge, to any person obtaining a copy
-#L:  of this software and associated documentation files (the "Software"), to deal
-#L:  in the Software without restriction, including without limitation the rights
-#L:  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-#L:  copies of the Software, and to permit persons to whom the Software is
-#L:  furnished to do so, subject to the following conditions:
-#L:
-#L:  The above copyright notice and this permission notice shall be included in all
-#L:  copies or substantial portions of the Software.
-#L:
-#L:  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-#L:  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-#L:  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-#L:  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-#L:  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-#L:  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-#L:  SOFTWARE.
 ##:
 #h: Usage: CC=gcc CFLAGS=-std=c99 $0 [-d]
 #h:
@@ -103,20 +82,10 @@ cc_info_print_size() {
              ;;
     esac
 }
-
-
-
 ## -------------------------------------------------------------------
-SCRNAME="`basename "$0"`"
-if test @"${SCRNAME}" = @"cc-info";then
+if test @"$(basename "$0")" = @"cc-info";then
     case "${1}" in
-        ''|-h|--help)
-            sed -n 's/^ *#h: \{0,1\}//p' "$0" | sed "s|\\\$0|${SCRNAME}|g"
-            echo ""
-            sed -n 's/^ *#l: \{0,2\}//p' "$0"
-            ;;
-        *)
-            cc_info "$@"
-            ;;
+        ''|-h|--help) sed -n 's/^ *#h: \{0,1\}//p' "$0";;
+        *)            cc_info "$@"; exit 0;;
     esac
 fi
