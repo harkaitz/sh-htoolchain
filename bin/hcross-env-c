@@ -34,13 +34,8 @@ hcross_env_c() {
     if true; then
 
         ## Installation directories.
-        if test -n "${HBUILD_DESTDIR}"; then
-            export HBUILD_DESTDIR="${HBUILD_DESTDIR}"
-            export HBUILD_PREFIX="${HBUILD_PREFIX:-/usr/local}"
-        else
-            export HBUILD_DESTDIR=
-            export HBUILD_PREFIX="${HBUILD_PREFIX:-${prefix:-/usr/local}}"
-        fi
+        export HBUILD_PREFIX="${HBUILD_PREFIX:-${prefix:-/usr/local}}"
+        
         if test -n "${tool_prefix}"; then
             export HBUILD_TOOLCHAIN="`echo "${tool_prefix}" | sed 's|-$||'`"
         else

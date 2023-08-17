@@ -14,7 +14,8 @@ cc_vers() {
            V_TAR     "${V_TAR}"         V_XZ     "${V_XZ}"       \
            V_GREP    "${V_GREP}"        V_GZIP   "${V_GZIP}"     \
            V_BZIP2   "${V_BZIP2}"       V_FILE   "${V_FILE}"     \
-           V_M4      "${V_M4}"          V_BC     "${V_BC}"
+           V_M4      "${V_M4}"          V_BC     "${V_BC}"       \
+           V_RSYNC   "${V_RSYNC}"
     printf '\n## COMPILERS\n\n'
     printf '%-12s : %s\n' \
            V_BISON       "${V_BISON}"       V_GCC       "${V_GCC}"        \
@@ -71,6 +72,7 @@ cc_vers_calc_variables() {
     V_PKG_CONFIG="$( pkg-config --version 2>/dev/null             || true)"
     V_AUTOPOINT="$(  autopoint  --version 2>/dev/null | head -n1  || true)"
     V_GETTEXT="$(    gettext    --version 2>/dev/null | head -n1  || true)"
+    V_RSYNC="$(      rsync      --version 2>/dev/null | head -n1  || true)"
 }
 cc_vers_calc_variables
 if test @"$(basename "$0")" = @"cc-vers"; then
