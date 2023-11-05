@@ -1,0 +1,11 @@
+#!/bin/sh -e
+. hcross-env-c
+
+if ! which x86_64-linux-gnu-gcc >/dev/null; then
+    echo >&2 "error: Can't find GNU/Linux compiler."
+    exit 1
+fi
+
+hcross_env_c \
+    type=gnu \
+    tool_prefix="x86_64-linux-gnu-"

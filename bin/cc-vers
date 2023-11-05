@@ -5,9 +5,17 @@
 #h: Print versions of C environment utilities.
 ##:
 cc_vers() {
+    cc_vers_calc_variables
     printf '\n## RUNTIME\n\n'
+    case "$(uname -o)" in
+        GNU/Linux)
+            printf '%-12s : %s\n' \
+                   V_GLIBC   "${V_GLIBC}"
+            ;;
+    esac
+    
     printf '%-12s : %s\n' \
-           V_GLIBC   "${V_GLIBC}"       V_BASH   "${V_BASH}"     \
+           V_BASH    "${V_BASH}"                                 \
            V_CHOWN   "${V_CHOWN}"       V_DIFF   "${V_DIFF}"     \
            V_FIND    "${V_FIND}"        V_GAWK   "${V_GAWK}"     \
            V_PATCH   "${V_PATCH}"       V_SED    "${V_SED}"      \
@@ -29,17 +37,28 @@ cc_vers() {
            V_GETTEXT     "${V_GETTEXT}"
 }
 cc_vers_calc_variables() {
-    local uname_s="`uname -s`"
-    if test @"${uname_s}" = @"Linux";then
-        V_GLIBC="$(                           \
+    local uname_s=""
+    case "$(uname -o)" in
+        GNU/Linux)
+            V_GLIBC="$(                       \
             ldd $(which ${SHELL}) 2>/dev/null \
             | grep libc.so                    \
             | cut -d ' ' -f 3                 \
             | ${SHELL}                        \
             | head -n 1                       )"
-    else
-        V_GLIBC=""
-    fi
+            ;;
+        MS/Windows)
+            echo >&2 "error: Execute this with an MSYS2 shell."
+            return 1
+            ;;
+        Msys)
+            true
+            ;;
+        *)
+            echo >&2 "error: Unsupported platform: $(uname -o)."
+            return 1
+            ;;
+    esac
     V_BASH="$(       bash       --version 2>/dev/null | head -n1 | cut -d" " -f2-4 || true)"
     V_CHOWN="$(      chown      --version 2>/dev/null | head -n1  || true)"
     V_DIFF="$(       diff       --version 2>/dev/null | head -n1  || true)"
@@ -74,7 +93,7 @@ cc_vers_calc_variables() {
     V_GETTEXT="$(    gettext    --version 2>/dev/null | head -n1  || true)"
     V_RSYNC="$(      rsync      --version 2>/dev/null | head -n1  || true)"
 }
-cc_vers_calc_variables
+
 if test @"$(basename "$0")" = @"cc-vers"; then
     cc_vers "$@"
 fi

@@ -138,17 +138,6 @@ one of the following links:
 2. [https://harkadev.com/oss/](https://harkadev.com/oss/)
 ## Help
 
-cc-info
-
-    Usage: CC=gcc CFLAGS=-std=c99 cc-info [-d]
-    
-    Get information from a gcc compiler.
-    
-        -d                   : List default defines.
-        -c MACRO=VALUE ...   : Print the first defined.     (CC,CFLAGS)
-        -t MACRO ...         : Check whether it is defined. (CC,CFLAGS)
-        -s @H1 @H2 @c++ TYPE : Get the size of a type. (CC,CXX,CFLAGS,CXXFLAGS)
-
 cc-vers
 
     Usage: cc-vers
@@ -261,4 +250,10 @@ sysroot-fix
     -l : Fix links in directory.
     -p : Fix permissions.
     -k : Fix pkgconfig.
+
+x86_64-linux-gnu-env
+
+
+x86_64-w64-mingw32-env
+
 

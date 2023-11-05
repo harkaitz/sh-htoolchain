@@ -1,0 +1,30 @@
+#!/bin/sh -e
+. hcross-env-c
+
+if which x86_64-w64-mingw32-gcc-posix >/dev/null; then
+    tool_suffix="-posix"
+elif which x86_64-w64-mingw32-gcc >/dev/null; then
+    tool_suffix=""
+else
+    echo >&2 "error: Can't find mingw32 toolchain."
+    exit 1
+fi
+
+prefixes=
+if test -d /usr/x86_64-w64-mingw32/include; then
+    prefix="/usr/x86_64-w64-mingw32"
+    prefixes="${prefixes} /usr/x86_64-w64-mingw32"
+fi
+
+case "$(uname -o)" in
+    GNU/Linux)
+        export HBUILD_SUDO="sudo"
+        ;;
+esac
+
+hcross_env_c                          \
+    type=gnu                          \
+    tool_suffix=${tool_suffix}        \
+    tool_prefix="x86_64-w64-mingw32-" \
+    prefix="${prefix}"                \
+    prefixes="${prefixes}"
