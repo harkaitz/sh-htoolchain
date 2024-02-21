@@ -1,0 +1,13 @@
+#!/bin/sh -e
+. hcross-env-c
+
+if ! which aarch64-linux-gnu-gcc >/dev/null; then
+    echo >&2 "error: Can't find GNU/Linux ARM64 GCC compiler."
+    exit 1
+fi
+
+hcross_env_c \
+    type=gnu \
+    tool_prefix="aarch64-linux-gnu-" \
+    prefix="/s/aarch64-linux-gnu"    \
+    prefixes="/usr/aarch64-linux-gnu /s/aarch64-linux-gnu"

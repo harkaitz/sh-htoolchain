@@ -7,7 +7,7 @@
 ##:
 hgmake() {
     local targets= t=
-    while test -n "$1";do
+    while test -n "$1"; do
         case "$1" in
             *=*)  break;;
             -*)   break;;
@@ -16,6 +16,7 @@ hgmake() {
         shift
     done
     for t in ${targets:-all}; do
+        echo ""
         case "${t}" in
             clean)   hgmake_clean   "$@"        ;;
             all)     hgmake_build   "$@"        ;;
@@ -23,6 +24,7 @@ hgmake() {
             options) hgmake_options "$@"        ;;
             *)       hgmake_build   "${t}" "$@" ;;
         esac
+        echo ""
     done
 }
 ## -----------------------------------------------------------------------------
@@ -40,7 +42,6 @@ hgmake_build() {
         PREFIX="${HBUILD_PREFIX:-/usr/local}"                \
         DESTDIR="${HBUILD_DESTDIR}" \
         "$@"
-         
 }
 hgmake_install() {
     ${HBUILD_SUDO:-env}                        \

@@ -213,7 +213,8 @@ hcross_env_c() {
         *linux*)           export GOOS=linux;;
     esac
     case "${tool_prefix}" in 
-        *x86_64*) export GOARCH=amd64;;
+        *x86_64*)  export GOARCH=amd64;;
+        *aarch64*) export GOARCH=arm64;;
     esac
     export CGO_ENABLED="1"
     export CGO_CFLAGS="${CFLAGS}"

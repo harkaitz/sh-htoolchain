@@ -13,7 +13,6 @@
 . hlog
 . vrun
 . vcd
-. hterm
 . hmain
 hcmake() {
     hcmake_calc_variables
@@ -31,17 +30,23 @@ hcmake() {
     esac
 }
 hcmake_show_variables() {
-    hterm vars             \
-          -                \
-          NPROC            \
-          HBUILD_SUDO      \
-          HBUILD_DESTDIR   \
-          HBUILD_PREFIX    \
-          HBUILD_TOOLCHAIN \
-          -                \
-          HCMAKE_BUILD_DIR \
-          ${HCMAKE_VARS}   \
-          -
+    local v
+    cat <<-EOF
+	NPROC            : ${NPROC}
+	HBUILD_SUDO      : ${HBUILD_SUDO}
+	HBUILD_DESTDIR   : ${HBUILD_DESTDIR}
+	HBUILD_PREFIX    : ${HBUILD_PREFIX}
+	HBUILD_TOOLCHAIN : ${HBUILD_TOOLCHAIN}
+	-
+	HCMAKE_BUILD_DIR : ${HCMAKE_BUILD_DIR}
+	EOF
+    for v in ${HCMAKE_VARS}; do
+        if test @"${v}" = @"-"; then
+            printf '%s\n' '-'
+        else
+            eval "printf '%-25s : %s\\n' ${v} \${${v}}"
+        fi
+    done
 }
 hcmake_calc_variables() {
     HCMAKE_BUILD_DIR="${HCMAKE_BUILD_DIR:-build-${HBUILD_TOOLCHAIN:-native}}"

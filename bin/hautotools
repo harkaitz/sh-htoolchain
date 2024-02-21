@@ -113,6 +113,10 @@ hautotools_install() {
 hautotools_log()  { echo "${SCRNAME}: $*" >&2; }
 hautotools_vrun() { hautotools_log "$*"; "$@"; }
 ## -------------------------------------------------------------------
+if test ! -n "${HBUILD_PREFIX}"; then
+    HBUILD_PREFIX=/usr/local
+    HBUILD_SUDO=sudo
+fi
 if test @"$(basename "$0")" = @"hautotools";then
     case "${1}" in
         ''|-h|--help) sed -n 's/^ *#h: \{0,1\}//p' "$0" ;;
