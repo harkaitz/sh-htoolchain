@@ -106,7 +106,7 @@ hcross() (
         local cmd="build_`echo "${1}" | tr '-' '_' | tr '/' '_'`"; shift
         ( set -e; export HLOG_NO_PREFIX=y; "${cmd}" "$@" )
     else
-        hcross_list_programs | sed -n 's|^build_||p'
+        hcross_list_programs | sed -n 's|^build_||p' | sort -u
     fi
     ## Create tar.
     if test -n "${tarname}"; then
@@ -126,6 +126,8 @@ hcross_list_programs() {
     done
 }
 ## -------------------------------------------------------------------
+export PATH="/h/2/harkaitz-packaging/pkgs:${PATH}"
+
 if test @"$(basename "$0")" = @"hcross";then
     case "${1}" in
         ''|-h|--help) sed -n 's/^ *#h: \{0,1\}//p' "$0" ;;

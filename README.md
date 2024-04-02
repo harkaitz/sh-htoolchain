@@ -138,6 +138,9 @@ one of the following links:
 2. [https://harkadev.com/oss/](https://harkadev.com/oss/)
 ## Help
 
+aarch64-linux-gnu-env
+
+
 cc-vers
 
     Usage: cc-vers

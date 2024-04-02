@@ -9,7 +9,7 @@ install:
 install: install-license
 install-license: 
 	mkdir -p $(DESTDIR)$(PREFIX)/share/doc/$(PROJECT)
-	cp LICENSE  $(DESTDIR)$(PREFIX)/share/doc/$(PROJECT)
+	cp LICENSE $(DESTDIR)$(PREFIX)/share/doc/$(PROJECT)
 ## -- BLOCK:license --
 ## -- BLOCK:sh --
 install: install-sh
@@ -25,6 +25,7 @@ install-sh:
 	cp bin/gcc-env          $(DESTDIR)$(PREFIX)/bin
 	cp bin/x86_64-linux-gnu-env $(DESTDIR)$(PREFIX)/bin
 	cp bin/hcross-env-c     $(DESTDIR)$(PREFIX)/bin
+	cp bin/aarch64-linux-gnu-env $(DESTDIR)$(PREFIX)/bin
 	cp bin/hcross           $(DESTDIR)$(PREFIX)/bin
 	cp bin/hcmake           $(DESTDIR)$(PREFIX)/bin
 ## -- BLOCK:sh --

@@ -37,7 +37,7 @@ hgmake_build() {
         CC="${CC:-gcc} ${CFLAGS} ${CPPFLAGS} ${LDFLAGS}"     \
         CXX="${CXX:-g++} ${CXXFLAGS} ${CPPFLAGS} ${LDFLAGS}" \
         AR="${AR:-ar}"                                       \
-        LD="${LD:-ld} ${LDFLAGS}"                            \
+        ${skip_ld:+skip__}LD="${LD:-ld} ${LDFLAGS}"          \
         EXE="${EXE}"                                         \
         PREFIX="${HBUILD_PREFIX:-/usr/local}"                \
         DESTDIR="${HBUILD_DESTDIR}" \
