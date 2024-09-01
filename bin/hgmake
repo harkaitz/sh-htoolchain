@@ -29,7 +29,7 @@ hgmake() {
 }
 ## -----------------------------------------------------------------------------
 hgmake_clean() {
-    env ${MAKE:-make} clean EXE="${EXE}" "$@"
+    env ${MAKE:-make} clean ${EXE:+ EXE="${EXE}" } "$@"
 }
 hgmake_build() {
     env                                                      \
@@ -38,16 +38,16 @@ hgmake_build() {
         CXX="${CXX:-g++} ${CXXFLAGS} ${CPPFLAGS} ${LDFLAGS}" \
         AR="${AR:-ar}"                                       \
         ${skip_ld:+skip__}LD="${LD:-ld} ${LDFLAGS}"          \
-        EXE="${EXE}"                                         \
+        ${EXE:+ EXE="${EXE}" }                               \
         PREFIX="${HBUILD_PREFIX:-/usr/local}"                \
         DESTDIR="${HBUILD_DESTDIR}" \
         "$@"
 }
 hgmake_install() {
-    ${HBUILD_SUDO:-env}                        \
+    ${HBUILD_SUDO:-sudo}                       \
         ${MAKE:-make}                          \
         CC=false CXX=false AR=false LD=false   \
-        EXE="${EXE}"                           \
+        ${EXE:+ EXE="${EXE}" }                 \
         PREFIX="${HBUILD_PREFIX:-/usr/local}"  \
         DESTDIR="${HBUILD_DESTDIR}"            \
         install                                \

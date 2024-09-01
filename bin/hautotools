@@ -103,7 +103,7 @@ hautotools_make() {
 }
 hautotools_install() {
     hautotools_vrun                     \
-        ${HBUILD_SUDO:-env}             \
+        ${HBUILD_SUDO:-sudo}            \
         ${MAKE:-make}                   \
         ${MAKE_INSTALL_TARGET:-install} \
         V=1                             \

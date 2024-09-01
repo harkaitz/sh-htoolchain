@@ -203,9 +203,9 @@ hcmake_build() {
 hcmake_install() {
     vcd + "${HCMAKE_BUILD_DIR}"
     if test -f Makefile;then
-        vrun ${HBUILD_SUDO:-env} LANG=C make VERBOSE=1 install
+        vrun ${HBUILD_SUDO:-sudo} LANG=C make VERBOSE=1 install
     elif test -f build.ninja;then
-        vrun ${HBUILD_SUDO:-env} LANG=C ninja install
+        vrun ${HBUILD_SUDO:-sudo} LANG=C ninja install
     else
         hlog error "Unknown build system."
         return 1

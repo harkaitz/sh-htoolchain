@@ -34,7 +34,7 @@ cc_vers() {
            V_NINJA       "${V_NINJA}"       V_MESON     "${V_MESON}"      \
            V_MAKEINFO    "${V_MAKEINFO}"    V_TIC       "${V_TIC}"        \
            V_PKG_CONFIG  "${V_PKG_CONFIG}"  V_AUTOPOINT "${V_AUTOPOINT}"  \
-           V_GETTEXT     "${V_GETTEXT}"
+           V_GETTEXT     "${V_GETTEXT}"     V_GROPDF    "${V_GROPDF}"
 }
 cc_vers_calc_variables() {
     local uname_s=""
@@ -92,6 +92,7 @@ cc_vers_calc_variables() {
     V_AUTOPOINT="$(  autopoint  --version 2>/dev/null | head -n1  || true)"
     V_GETTEXT="$(    gettext    --version 2>/dev/null | head -n1  || true)"
     V_RSYNC="$(      rsync      --version 2>/dev/null | head -n1  || true)"
+    V_GROPDF="$(     gropdf     --version 2>/dev/null | head -n1  || true)"
 }
 
 if test @"$(basename "$0")" = @"cc-vers"; then
