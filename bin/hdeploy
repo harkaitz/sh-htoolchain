@@ -1,0 +1,81 @@
+#!/bin/sh -e
+##:
+#h: Usage: hdeploy [-t TOOLCHAIN][-o TAR][-r SSH][-S][-C DIR] COMMAND
+#h:
+#h: Create a tar file by executing COMMAND (with HBUILD_DESTDIR set) and
+#h: upload to SSH (when specified) (with -S using sudo).
+##:
+hdeploy() {
+    local OPTIND optopt pwd="$(pwd)" opt_t= opt_o= opt_r= opt_S= opt_C= opt_p= cmd=
+    
+    ## Parse command line arguments.
+    while getopts "t:o:r:SC:p:" optopt; do
+        case $optopt in
+            t)  opt_t="${OPTARG}";;  o)  opt_o="${OPTARG}";;
+            r)  opt_r="${OPTARG}";;  S)  opt_S="y";;
+            C)  opt_C="${OPTARG}";;  p)  opt_p="${OPTARG}";;
+            \?) return 1;;
+        esac
+    done
+    shift $(( $OPTIND - 1 ))
+
+    ## Require a command.
+    if test -n "$1"; then
+        cmd="$*"
+    elif test -f GNUmakefile || test -f Makefile; then
+        cmd="hgmake -v clean all install"
+    else
+        echo >&2 "hdeploy: error: Please specify a command."
+        return 1
+    fi
+
+    ## Create temporary directory.
+    local dest="$(mktemp -d)"
+    
+    ## Move to directory.
+    if test -n "${opt_C}"; then
+        cd "${opt_C}"
+        echo "hdeploy: Entering $(pwd) ..."
+    fi
+    
+    ## Build project.
+    echo "hdeploy: hcross: ${cmd}"
+    hcross -d "${dest}" \
+           ${opt_t:+ -t "${opt_t}" } \
+           ${opt_p:+ -p "${opt_p}" } \
+           sh -vec "${cmd}"
+
+    ## Move back.
+    if test -n "${opt_C}"; then
+        echo "hdeploy: Leaving $(pwd) ..."
+        cd "${opt_C}"
+    fi
+    
+    ## Create tar file.
+    echo "hdeploy: Creating ${dest}.tar.gz ..."
+    tar czf "${dest}.tar.gz" -C "${dest}" .
+    rm -rf "${dest}"
+    
+    ## Save in tar.
+    if test -n "${opt_o}"; then
+        echo "hdeploy: Saving in ${opt_o} ..."
+        cp "${dest}.tar.gz" "${opt_o}"
+    fi
+    
+    ## Install in remote machine.
+    if test -n "${opt_r}"; then
+        tar-install -v ${opt_S:+ -S } ${opt_r:+ -r "${opt_r}" } "${dest}.tar.gz"
+    fi
+    
+    ## Cleanup.
+    rm -f "${dest}.tar.gz"
+    return 0
+}
+
+## -------------------------------------------------------------------
+if test @"${SCRNAME:-$(basename "$0")}" = @"hdeploy"; then
+    case "${1}" in
+        ''|-h|--help) sed -n 's/^ *#h: \{0,1\}//p' "$0";;
+        *)            hdeploy "$@"; exit 0;;
+    esac
+fi

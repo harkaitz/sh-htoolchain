@@ -28,4 +28,6 @@ install-sh:
 	cp bin/aarch64-linux-gnu-env $(DESTDIR)$(PREFIX)/bin
 	cp bin/hcross $(DESTDIR)$(PREFIX)/bin
 	cp bin/hcmake $(DESTDIR)$(PREFIX)/bin
+	cp bin/tar-install $(DESTDIR)$(PREFIX)/bin
+	cp bin/hdeploy $(DESTDIR)$(PREFIX)/bin
 ## -- BLOCK:sh --

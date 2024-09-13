@@ -216,6 +216,13 @@ hcross-env-c
     ... tool_prefix=TPREFIX  : Tool prefix, ie "x86_64-linux-gnu-". 
     ... prefixes="P1 P2 ..." : Dependency search path. 
 
+hdeploy
+
+    Usage: hdeploy [-t TOOLCHAIN][-o TAR][-r SSH][-S][-C DIR] COMMAND
+    
+    Create a tar file by executing COMMAND (with HBUILD_DESTDIR set) and
+    upload to SSH (when specified) (with -S using sudo).
+
 hgmake
 
     Usage: hgmake [options] [clean] [all] [install] [OPTION=VALUE ...]
@@ -253,6 +260,16 @@ sysroot-fix
     -l : Fix links in directory.
     -p : Fix permissions.
     -k : Fix pkgconfig.
+
+tar-install
+
+    Usage: tar-install [-v][-S][-r SSH][-p POD][-s CHROOT] TAR
+    
+    Extract a tar file with `-h -o -m --no-same-permissions` in
+    the local or remote (-r) machine. Using sudo (-S).
+    
+    Never execute `tar -xf TAR -C /` as it can break links such
+    as `/usr/lib -> /lib`. Use `tar-install` instead.
 
 x86_64-linux-gnu-env
 

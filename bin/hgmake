@@ -9,6 +9,7 @@ hgmake() {
     local targets= t=
     while test -n "$1"; do
         case "$1" in
+            -v)   local VERBOSE=y;;
             *=*)  break;;
             -*)   break;;
             *)    local targets="${targets} ${1}";;
@@ -29,10 +30,14 @@ hgmake() {
 }
 ## -----------------------------------------------------------------------------
 hgmake_clean() {
-    env ${MAKE:-make} clean ${EXE:+ EXE="${EXE}" } "$@"
+    hgmake_vrun                \
+        ${MAKE:-make}          \
+        clean                  \
+        ${EXE:+ EXE="${EXE}" } \
+        "$@"
 }
 hgmake_build() {
-    env                                                      \
+    hgmake_vrun                                              \
         ${MAKE:-make}                                        \
         CC="${CC:-gcc} ${CFLAGS} ${CPPFLAGS} ${LDFLAGS}"     \
         CXX="${CXX:-g++} ${CXXFLAGS} ${CPPFLAGS} ${LDFLAGS}" \
@@ -44,7 +49,8 @@ hgmake_build() {
         "$@"
 }
 hgmake_install() {
-    ${HBUILD_SUDO:-sudo}                       \
+    hgmake_vrun \
+        ${HBUILD_SUDO:-sudo}                   \
         ${MAKE:-make}                          \
         CC=false CXX=false AR=false LD=false   \
         ${EXE:+ EXE="${EXE}" }                 \
@@ -67,7 +73,12 @@ hgmake_options() (
 	DESTDIR  =${HBUILD_DESTDIR}
 	EOF
 )
-
+hgmake_vrun() {
+    if test -n "${VERBOSE}"; then
+        echo "$*"
+    fi
+    "$@"
+}
 ## -------------------------------------------------------------------
 if test @"$(basename "$0")" = @"hgmake";then
     case "${1}" in

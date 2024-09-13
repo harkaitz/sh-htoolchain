@@ -1,0 +1,76 @@
+#!/bin/sh -e
+##:
+#h: Usage: tar-install [-v][-S][-r SSH][-p POD][-s CHROOT] TAR
+#h:
+#h: Extract a tar file with `-h -o -m --no-same-permissions` in
+#h: the local or remote (-r) machine. Using sudo (-S).
+#h:
+#h: Never execute `tar -xf TAR -C /` as it can break links such
+#h: as `/usr/lib -> /lib`. Use `$0` instead.
+##:
+tar_install() {
+    
+    local VERBOSE
+    local tar tar_n
+    local flags="-h -o -m --no-same-permissions"
+    
+    ## Parse command line arguments.
+    local OPTIND optopt opt_r= opt_s=/ opt_p= sudo=
+    while getopts "vSr:s:p:" optopt; do
+        case $optopt in
+            v)  local flags="${flags} -v" VERBOSE=y;;
+            S)  local sudo=sudo           ;;
+            r)  local opt_r="${OPTARG}"   ;;
+            s)  local opt_s="${OPTARG}"   ;;
+            p)  local opt_p="${OPTARG}"   ;;
+            \?) return 1;;
+        esac
+    done
+    shift $(( $OPTIND - 1 ))
+    tar="$1"
+    if test ! -n "${tar}"; then
+        echo "error: Please specify a tar file." >&2
+        return 1
+    elif test ! -f "${tar}"; then
+        echo "error: File ${tar} does not exist." >&2
+        return 1
+    fi
+    tar_n="$(basename ${tar})"
+    
+    ## Perform extractions.
+    if test -n "${opt_r}"
+    then
+        test ! -n "${VERBOSE}" || echo "Uploading: ${tar_n} -> ${opt_r}:${opt_s}" >&2
+        ssh -o ForwardX11=no "${opt_r}" "
+            if test @\"\$(uname -s)\" = @OpenBSD; then
+                mkdir -p '${opt_s}'
+                tar xzhm${VERBOSE:+v}f - -C '${opt_s}'
+            elif test -n '${sudo}' && which sudo >/dev/null 2>&1; then
+                sudo mkdir -p '${opt_s}'
+                sudo tar xzf - -C '${opt_s}' ${flags}
+            else
+                mkdir -p '${opt_s}'
+                tar xzf - -C '${opt_s}' ${flags}
+            fi
+        " < "${tar}"
+    elif test -n "${opt_p}"
+    then
+        sudo podman exec -i "${opt_p}" /bin/sh -c "
+            mkdir -p '${opt_s}'
+            tar xzf '${tar}' -C '${opt_s}' ${flags}
+        " < "${tar}"
+    else
+        test ! -n "${VERBOSE}" || echo "Extracting: ${tar_n} -> ${opt_s:-/}" >&2
+        ${sudo} sh -c "
+            mkdir -p '${opt_s}'
+            tar xzf '${tar}' -C '${opt_s}' ${flags}
+        "
+    fi
+}
+## -------------------------------------------------------------------
+if test @"${SCRNAME:-$(basename "$0")}" = @"tar-install"; then
+    case "${1}" in
+        ''|-h|--help) sed -n 's/^ *#h: \{0,1\}//p' "$0";;
+        *)            tar_install "$@"; exit 0;;
+    esac
+fi
