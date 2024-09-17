@@ -1,6 +1,6 @@
 #!/bin/sh -e
 ##:
-#h: Usage: hdeploy [-t TOOLCHAIN][-o TAR][-r SSH][-S][-C DIR] COMMAND
+#h: Usage: hdeploy [-t TOOLCHAIN][-p PREFIX][-o TAR][-r SSH][-S][-C DIR] COMMAND
 #h:
 #h: Create a tar file by executing COMMAND (with HBUILD_DESTDIR set) and
 #h: upload to SSH (when specified) (with -S using sudo).
@@ -22,7 +22,7 @@ hdeploy() {
     ## Require a command.
     if test -n "$1"; then
         cmd="$*"
-    elif test -f GNUmakefile || test -f Makefile; then
+    elif test -f "${opt_C:-.}"/GNUmakefile || test -f "${opt_C:-.}"/Makefile; then
         cmd="hgmake -v clean all install"
     else
         echo >&2 "hdeploy: error: Please specify a command."
@@ -53,7 +53,9 @@ hdeploy() {
     
     ## Create tar file.
     echo "hdeploy: Creating ${dest}.tar.gz ..."
-    tar czf "${dest}.tar.gz" -C "${dest}" .
+    cd "${dest}"
+    tar czf "${dest}.tar.gz" --owner 0 --group 0 *
+    cd "${pwd}"
     rm -rf "${dest}"
     
     ## Save in tar.
@@ -68,6 +70,7 @@ hdeploy() {
     fi
     
     ## Cleanup.
+    echo "hdeploy: Removing ${dest}.tar.gz ..."
     rm -f "${dest}.tar.gz"
     return 0
 }

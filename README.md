@@ -218,7 +218,7 @@ hcross-env-c
 
 hdeploy
 
-    Usage: hdeploy [-t TOOLCHAIN][-o TAR][-r SSH][-S][-C DIR] COMMAND
+    Usage: hdeploy [-t TOOLCHAIN][-p PREFIX][-o TAR][-r SSH][-S][-C DIR] COMMAND
     
     Create a tar file by executing COMMAND (with HBUILD_DESTDIR set) and
     upload to SSH (when specified) (with -S using sudo).

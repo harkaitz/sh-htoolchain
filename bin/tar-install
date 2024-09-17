@@ -6,13 +6,13 @@
 #h: the local or remote (-r) machine. Using sudo (-S).
 #h:
 #h: Never execute `tar -xf TAR -C /` as it can break links such
-#h: as `/usr/lib -> /lib`. Use `$0` instead.
+#h: as `/usr/lib -> /lib`. Use `tar-install` instead.
 ##:
 tar_install() {
     
     local VERBOSE
     local tar tar_n
-    local flags="-h -o -m --no-same-permissions"
+    local flags="-h -o -m -p"
     
     ## Parse command line arguments.
     local OPTIND optopt opt_r= opt_s=/ opt_p= sudo=
