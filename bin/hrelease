@@ -1,0 +1,73 @@
+#!/bin/sh -e
+##:
+#h: Usage: hrelease [-V][-t TOOLCHAIN,...][-N NAME][-R VER] { -s | COMMAND }
+#h:
+#h: This program creates releases of a project with hdeploy(1), the generated
+#h: files can be listed with "-s".
+##:
+. htriplet
+hrelease() {
+    local OPTIND optopt toolchain archives= toolchains= name= version= list= output=
+    
+    ## Parse command line arguments.
+    while getopts "Vt:N:R:o:s" optopt; do
+        case $optopt in
+            V)     echo "HBUILD_RELEASE_DIR: ${HBUILD_RELEASE_DIR}"; return 0;;
+            t)     toolchains="${toolchains} $(echo "${OPTARG}" | tr ',' ' ')";;
+            N)     name="${OPTARG}";;
+            R)     version="${OPTARG}";;
+            o)     output="${OPTARG}";;
+            s)     list="y";;
+            \?)    return 1;;
+        esac
+    done
+    shift $(( $OPTIND - 1 ))
+    
+    ## Get name and version.
+    if test ! -n "${name}"; then
+        echo >&2 "error: Please specify a name. (-N)"
+        return 1
+    elif test ! -n "${version}"; then
+        echo >&2 "error: Please specify a version. (-R)"
+        return 1
+    fi
+    
+    ## For each toolchain.
+    for toolchain in ${toolchains}; do
+        local machine system format prefix archive
+        machine="$( htriplet -m "${toolchain}")"; test -n "${machine}"
+        system="$(  htriplet -s "${toolchain}")"; test -n "${system}"
+        format="$(  htriplet -z "${toolchain}")"; test -n "${format}"
+        prefix="$(  htriplet -p "${toolchain}")"; test -n "${prefix}"
+        archive="${HBUILD_RELEASE_DIR}/${name}-${version}_${system}_${machine}${format}"
+        archives="${archives} ${archive}"
+        if test -n "${list}"; then
+            if test ! -f "${archive}"; then
+                echo >&2 "error: ${archive}: Not found."
+                return 1
+            fi
+            echo "${archive}"
+            continue
+        fi
+        mkdir -p "${HBUILD_RELEASE_DIR}"
+        hdeploy -t "${toolchain}" -p "${prefix}" -o "${archive}" "$@"
+        
+    done
+    
+    ## Save list.
+    if test -n "${output}"; then
+        echo "Creating ${output} ..."
+        for archive in ${archives}; do
+            echo "${archive}"
+        done > "${output}"
+    fi
+    
+}
+## -------------------------------------------------------------------
+HBUILD_RELEASE_DIR="${HBUILD_RELEASE_DIR:-${HOME}/.Releases}"
+if test @"${SCRNAME:-$(basename "$0")}" = @"hrelease"; then
+    case "${1}" in
+        ''|-h|--help) sed -n 's/^ *#h: \{0,1\}//p' "$0";;
+        *)            hrelease "$@"; exit 0;;
+    esac
+fi

@@ -244,6 +244,20 @@ hmeson
     
     ... all : Clean, configure, build, install.
 
+hrelease
+
+    Usage: hrelease [-V][-t TOOLCHAIN,...][-N NAME][-R VER] { -s | COMMAND }
+    
+    This program creates releases of a project with hdeploy(1), the generated
+    files can be listed with "-s".
+
+htriplet
+
+    Usage: htriplet {-m, -s, -z, -p} TRIPLET|noarch-OS-SYS
+    
+    Print machine (-m) system (-s) archive format (-z) and preferred
+    prefix (-p) of the tripplet.
+
 img2tar
 
     Usage: img2tar [-o TARFILE][-n PARTITION] DISK

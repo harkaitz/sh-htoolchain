@@ -55,14 +55,14 @@ hdeploy() {
     echo "hdeploy: Creating ${dest}.tar.gz ..."
     cd "${dest}"
     tar czf "${dest}.tar.gz" --owner 0 --group 0 *
+    case "${opt_o}" in
+        '')       true;;
+        *.tar.gz) echo "hdeploy: Saving in ${opt_o} ..."; cp "${dest}.tar.gz" "${opt_o}";;
+        *.zip)    echo "hdeploy: Creating ${opt_o} ...";  rm -f "${opt_o}"; 7z a "${opt_o}" .;;
+        *)        echo "hdeploy: error: ${opt_o}: Unsupported format." >&2; return 1;;
+    esac
     cd "${pwd}"
     rm -rf "${dest}"
-    
-    ## Save in tar.
-    if test -n "${opt_o}"; then
-        echo "hdeploy: Saving in ${opt_o} ..."
-        cp "${dest}.tar.gz" "${opt_o}"
-    fi
     
     ## Install in remote machine.
     if test -n "${opt_r}"; then
