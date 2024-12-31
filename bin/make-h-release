@@ -1,0 +1,41 @@
+#!/bin/sh -e
+##:
+#h: Usage: make-h-release ...
+#h:
+#h: Add "release" target to GNUmakefile that uses "htoolchain" that
+#h: uploads built tars/zips to github.
+#h:
+#h:   makefile    Print 'Makefile'.
+#h:   gitignore   Print '.gitignore'.
+#h:
+#h: You should add "TOOLCHAINS" variable to the makefile manually, for
+#h: example: x86_64-w64-mingw32 x86_64-linux-musl
+##:
+make_h_release() {
+    local cmd="$1"
+    shift
+    case "${cmd}" in
+        makefile)  make_h_release_makefile  ;;
+        gitignore) make_h_release_gitignore ;;
+        *) echo >&2 "error: Invalid argument: ${cmd}"; return 1;;
+    esac
+}
+## -------------------------------------------------------------------
+make_h_release_makefile() {
+    sed 's|^    |	|' <<-EOF
+	release:
+	    mkdir -p \$(BUILDDIR)
+	    hrelease -w github -t "\$(TOOLCHAINS)" -N \$(PROJECT) -R \$(VERSION) -o \$(BUILDDIR)/Release
+	    gh release create v\$(VERSION) \$\$(cat \$(BUILDDIR)/Release)
+	EOF
+}
+make_h_release_gitignore() {
+    true
+}
+## -------------------------------------------------------------------
+if test @"${SCRNAME:-$(basename "$0")}" = @"make-h-release"; then
+    case "${1}" in
+        ''|-h|--help) sed -n 's/^ *#h: \{0,1\}//p' "$0";;
+        *)            make_h_release "$@"; exit 0;;
+    esac
+fi

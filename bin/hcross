@@ -19,8 +19,8 @@
 #h: -w           : Run command by `build_{CMD}`
 #h: -b           : Bootstrap to the prefix.
 ##:
-hcross() (
-    local old_env="`export -p`"
+hcross() {
+    local old_env="$(export -p)"
     local old_vars="${HBUILD_VARS}" var= line=
     local toolchain="${HBUILD_TOOLCHAIN_DEFAULT:-native}"
     local tarname=""
@@ -116,7 +116,7 @@ hcross() (
     unset ${vars}
     HBUILD_VARS="${old_vars}"
     eval "${old_env}"
-)
+}
 ## -------------------------------------------------------------------
 hcross_list_programs() {
     printf '%s\n' "${PATH}" | tr ':' '\n' | while read line; do

@@ -3,14 +3,25 @@
 #h: Usage: hrelease [-V][-t TOOLCHAIN,...][-N NAME][-R VER] { -s | COMMAND }
 #h:
 #h: This program creates releases of a project with hdeploy(1), the generated
-#h: files can be listed with "-s".
+#h: files can be listed with "-s". The generated output list can be saved in
+#h: a file with "-o".
+#h:
+#h: You can place the following in your makefile:
+#h:
+#h:   TOOLCHAINS=x86_64-linux-musl aarch64-linux-musl x86_64-w64-mingw32
+#h:   release:
+#h:       mkdir -p $(BUILDDIR)
+#h:       hrelease -t "$(TOOLCHAINS)" -N $(PROJECT) -R $(VERSION) -o $(BUILDDIR)/Release
+#h:       gh release create v$(VERSION) $$(cat $(BUILDDIR)/Release)
+#h:
+#h: Environment variables: HBUILD_RELEASE_DIR
 ##:
 . htriplet
 hrelease() {
-    local OPTIND optopt toolchain archives= toolchains= name= version= list= output=
+    local OPTIND optopt toolchain archives= toolchains= name= version= list= output= winst= remote= url=
     
     ## Parse command line arguments.
-    while getopts "Vt:N:R:o:s" optopt; do
+    while getopts "Vt:N:R:o:sw:" optopt; do
         case $optopt in
             V)     echo "HBUILD_RELEASE_DIR: ${HBUILD_RELEASE_DIR}"; return 0;;
             t)     toolchains="${toolchains} $(echo "${OPTARG}" | tr ',' ' ')";;
@@ -18,6 +29,7 @@ hrelease() {
             R)     version="${OPTARG}";;
             o)     output="${OPTARG}";;
             s)     list="y";;
+            w)     winst="${OPTARG}";;
             \?)    return 1;;
         esac
     done
@@ -34,12 +46,13 @@ hrelease() {
     
     ## For each toolchain.
     for toolchain in ${toolchains}; do
-        local machine system format prefix archive
+        local machine system format prefix basename archive
         machine="$( htriplet -m "${toolchain}")"; test -n "${machine}"
         system="$(  htriplet -s "${toolchain}")"; test -n "${system}"
         format="$(  htriplet -z "${toolchain}")"; test -n "${format}"
         prefix="$(  htriplet -p "${toolchain}")"; test -n "${prefix}"
-        archive="${HBUILD_RELEASE_DIR}/${name}-${version}_${system}_${machine}${format}"
+        basename="${name}-${version}_${system}_${machine}"
+        archive="${HBUILD_RELEASE_DIR}/${basename}${format}"
         archives="${archives} ${archive}"
         if test -n "${list}"; then
             if test ! -f "${archive}"; then
@@ -51,7 +64,47 @@ hrelease() {
         fi
         mkdir -p "${HBUILD_RELEASE_DIR}"
         hdeploy -t "${toolchain}" -p "${prefix}" -o "${archive}" "$@"
-        
+        if test -n "${winst}" && test @"${system}" = @"Windows_NT"; then
+            installer="${HBUILD_RELEASE_DIR}/${basename}.bat"
+            if test @"${winst}" = @"github"; then
+                remote="$(git remote get-url origin | sed -n 's|\.git||;s|.*@github.com/||p')"
+                if test ! -n "${remote}"; then
+                    echo >&2 "error: $(pwd): Not a github repository."
+                    return 1
+                fi
+                url="https://github.com/${remote}/releases/download/v${version}/${basename}${format}"
+            else
+                url="${winst}/${basename}${format}"
+            fi
+            unix2dos > "${installer}" <<-EOF
+		@echo off
+		set PROGRAM_NAME=${name}
+		set PROGRAM_URL=${url}
+		set PROGRAM_ZIP=%TEMP%\\${name}-${version}_${system}_${machine}${format}
+		echo *************************************************
+		echo * %PROGRAM_NAME% installer
+		echo *************************************************
+		echo -
+		echo This program is going to download and install %PROGRAM_NAME%
+		echo in your machine (only for %USERNAME% )
+		echo -
+		pause
+		if not exist "%PROGRAM_ZIP%" (
+		    echo == DOWNLOADING ...
+		    bitsadmin /transfer "DownloadJob" /download /priority normal "%PROGRAM_URL%" "%PROGRAM_ZIP%.tmp"
+		    if %errorlevel% neq 0 (
+		        echo Failed to download %PROGRAM_NAME% - %errorlevel%
+		        pause
+		    )
+		    move "%PROGRAM_ZIP%.tmp" "%PROGRAM_ZIP%"
+		)
+		echo == INSTALLING ...
+		tar -C %LOCALAPPDATA%\\Microsoft\\WindowsApps --strip-components 1 -v -xf "%PROGRAM_ZIP%" "bin/*"
+		tar -C %LOCALAPPDATA%\\Microsoft --exclude "bin/*" -v -xf "%PROGRAM_ZIP%"
+		pause
+		EOF
+            archives="${archives} ${installer}"
+        fi
     done
     
     ## Save list.

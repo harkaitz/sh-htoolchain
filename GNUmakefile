@@ -32,4 +32,5 @@ install-sh:
 	cp bin/hdeploy $(DESTDIR)$(PREFIX)/bin
 	cp bin/hrelease $(DESTDIR)$(PREFIX)/bin
 	cp bin/htriplet $(DESTDIR)$(PREFIX)/bin
+	cp bin/make-h-release $(DESTDIR)$(PREFIX)/bin
 ## -- BLOCK:sh --

@@ -249,7 +249,18 @@ hrelease
     Usage: hrelease [-V][-t TOOLCHAIN,...][-N NAME][-R VER] { -s | COMMAND }
     
     This program creates releases of a project with hdeploy(1), the generated
-    files can be listed with "-s".
+    files can be listed with "-s". The generated output list can be saved in
+    a file with "-o".
+    
+    You can place the following in your makefile:
+    
+      TOOLCHAINS=x86_64-linux-musl aarch64-linux-musl x86_64-w64-mingw32
+      release:
+          mkdir -p $(BUILDDIR)
+          hrelease -t "$(TOOLCHAINS)" -N $(PROJECT) -R $(VERSION) -o $(BUILDDIR)/Release
+          gh release create v$(VERSION) $$(cat $(BUILDDIR)/Release)
+    
+    Environment variables: HBUILD_RELEASE_DIR
 
 htriplet
 
@@ -266,6 +277,19 @@ img2tar
     a tar file.
     
     Requires: mount/umount/losetup/tar/fdisk/tar
+
+make-h-release
+
+    Usage: make-h-release ...
+    
+    Add "release" target to GNUmakefile that uses "htoolchain" that
+    uploads built tars/zips to github.
+    
+      makefile    Print 'Makefile'.
+      gitignore   Print '.gitignore'.
+    
+    You should add "TOOLCHAINS" variable to the makefile manually, for
+    example: x86_64-w64-mingw32 x86_64-linux-musl
 
 sysroot-fix
 

@@ -54,7 +54,10 @@ hdeploy() {
     ## Create tar file.
     echo "hdeploy: Creating ${dest}.tar.gz ..."
     cd "${dest}"
-    tar czf "${dest}.tar.gz" --owner 0 --group 0 *
+    case "$(uname -s)" in
+        Windows_NT) tar czf "${dest}.tar.gz" *;;
+        *)          tar czf "${dest}.tar.gz" --owner 0 --group 0 *;;
+    esac
     case "${opt_o}" in
         '')       true;;
         *.tar.gz) echo "hdeploy: Saving in ${opt_o} ..."; cp "${dest}.tar.gz" "${opt_o}";;
