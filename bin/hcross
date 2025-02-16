@@ -26,7 +26,7 @@ hcross() {
     local tarname=""
     HBUILD_VARS= HBUILD_TOOLCHAIN=
     ## Parse command line options.
-    local OPTIND optopt= ops= wrap= view= bootstrap=
+    local OPTIND=1 optopt= ops= wrap= view= bootstrap=
     while getopts "t:p:d:DwvSRbo:CT:" optopt; do
         case $optopt in
             t)  local toolchain="${OPTARG}"       ;;

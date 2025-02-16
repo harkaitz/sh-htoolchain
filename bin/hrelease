@@ -18,7 +18,7 @@
 ##:
 . htriplet
 hrelease() {
-    local OPTIND optopt toolchain archives= toolchains= name= version= list= output= winst= remote= url=
+    local OPTIND=1 optopt toolchain archives= toolchains= name= version= list= output= winst= remote= url=
     
     ## Parse command line arguments.
     while getopts "Vt:N:R:o:sw:" optopt; do

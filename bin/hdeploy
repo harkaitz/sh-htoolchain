@@ -6,7 +6,7 @@
 #h: upload to SSH (when specified) (with -S using sudo).
 ##:
 hdeploy() {
-    local OPTIND optopt pwd="$(pwd)" opt_t= opt_o= opt_r= opt_S= opt_C= opt_p= cmd=
+    local OPTIND=1 optopt pwd="$(pwd)" opt_t= opt_o= opt_r= opt_S= opt_C= opt_p= cmd=
     
     ## Parse command line arguments.
     while getopts "t:o:r:SC:p:" optopt; do

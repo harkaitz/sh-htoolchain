@@ -9,7 +9,7 @@
 ##:
 img2tar() {
     ## Parse command line options.
-    local OPTIND optopt= output= partition=
+    local OPTIND=1 optopt= output= partition=
     local loop=/dev/loop5 directory=/mnt/loop5 pwd="`pwd`"
     while getopts "o:n:" optopt;do # OPTARG
         local ops="${ops}${optopt}"

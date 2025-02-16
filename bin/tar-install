@@ -15,7 +15,7 @@ tar_install() {
     local flags="-h -o -m -p"
     
     ## Parse command line arguments.
-    local OPTIND optopt opt_r= opt_s=/ opt_p= sudo=
+    local OPTIND=1 optopt opt_r= opt_s=/ opt_p= sudo=
     while getopts "vSr:s:p:" optopt; do
         case $optopt in
             v)  local flags="${flags} -v" VERBOSE=y;;
