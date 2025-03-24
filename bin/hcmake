@@ -118,6 +118,7 @@ hcmake_calc_variables() {
             arm*)             export CMAKE_SYSTEM_PROCESSOR="arm"        ;;
             x86_64*)          export CMAKE_SYSTEM_PROCESSOR="x86_64"
                               export CMAKE_FIND_LIBRARY_CUSTOM_LIB_SUFFIX=64 ;;
+            i*)               export CMAKE_SYSTEM_PROCESSOR="X86";;
             native|'')        export CMAKE_SYSTEM_PROCESSOR="`uname -m`" ;;
         esac
         

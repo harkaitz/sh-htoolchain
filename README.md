@@ -269,6 +269,9 @@ htriplet
     Print machine (-m) system (-s) archive format (-z) and preferred
     prefix (-p) of the tripplet.
 
+i686-w64-mingw32-env
+
+
 img2tar
 
     Usage: img2tar [-o TARFILE][-n PARTITION] DISK

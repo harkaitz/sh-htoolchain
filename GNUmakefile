@@ -30,6 +30,7 @@ install-sh:
 	cp bin/hcmake $(DESTDIR)$(PREFIX)/bin
 	cp bin/tar-install $(DESTDIR)$(PREFIX)/bin
 	cp bin/hdeploy $(DESTDIR)$(PREFIX)/bin
+	cp bin/i686-w64-mingw32-env $(DESTDIR)$(PREFIX)/bin
 	cp bin/hrelease $(DESTDIR)$(PREFIX)/bin
 	cp bin/htriplet $(DESTDIR)$(PREFIX)/bin
 	cp bin/make-h-release $(DESTDIR)$(PREFIX)/bin
