@@ -99,7 +99,7 @@ hautotools_clean() {
     env ${MAKE:-make} distclean >/dev/null 2>&1 || true
 }
 hautotools_make() {
-    hautotools_vrun env ${MAKE:-make}  V=1 "$@"
+    hautotools_vrun env ${MAKE:-make} -j "${NPROC:-$(nproc)}" V=1 "$@"
 }
 hautotools_install() {
     hautotools_vrun                     \

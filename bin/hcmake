@@ -182,12 +182,12 @@ hcmake_configure() {
     hcmake_toolchain > "${HCMAKE_BUILD_DIR}/toolchain.cmake"
     vcd + "${HCMAKE_BUILD_DIR}"
     vrun env LANG=C                                        \
-         cmake -Wno-dev ..                                 \
+         cmake -Wno-dev "${HCMAKE_SOURCE_DIR:-..}"         \
          -DCMAKE_TOOLCHAIN_FILE="`pwd`/toolchain.cmake"    \
          -DCMAKE_INSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}"  \
          -DCMAKE_STAGING_PREFIX="${CMAKE_STAGING_PREFIX}"  \
          "$@"
-    vcd - ..
+    vcd - "${HCMAKE_SOURCE_DIR:-..}"
 }
 hcmake_build() {
     vcd + "${HCMAKE_BUILD_DIR}"
