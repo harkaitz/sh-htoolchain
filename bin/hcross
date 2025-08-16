@@ -65,8 +65,11 @@ hcross() {
             export HBUILD_SUDO="${HBUILD_SUDO:-env}"
         fi
     elif test @"${toolchain}" = @"l"; then
+        echo "noarch"
         hcross_list_programs | sed -n 's|-env$||p' | sort | uniq
         return 1
+    elif test @"${toolchain}" = @"noarch"; then
+        true
     elif test -n "${toolchain}"; then
         export HBUILD_TOOCHAIN="${toolchain}"
         local script="`which "${toolchain}-env" 2>/dev/null`"

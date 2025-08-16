@@ -9,19 +9,23 @@ htriplet() {
     local machine= system= archive= opts=
     case "$1" in -*) opts="$1"; shift;; esac
     case "$1" in
+        noarch)      machine="";;
         gcc|msvc|'') machine="$(uname -m)";;
         noarch-*)    machine="noarch";;
         x86_64-*)    machine="x86_64";;
+        amd64-*)     machine="amd64";;
         aarch64-*)   machine="aarch64";;
         *) echo >&2 "error: $1: Unknown machine."; return 1;;
     esac
     case "$1" in
+        noarch)      system="";;
         gcc|msvc|'') system="$(uname -s)";;
         *-linux-*)   system="Linux";;
         *-mingw*)    system="Windows_NT";;
         *) echo >&2 "error: $1: Unknown machine."; return 1;;
     esac
     case "$system" in
+        '')          archive=".tar.gz" prefix="/usr/local";;
         Linux)       archive=".tar.gz" prefix="/usr/local";;
         Windows_NT)  archive=".zip"    prefix="/";;
         *)           archive=".tar.gz" prefix="/usr/local";;
@@ -31,6 +35,7 @@ htriplet() {
     case "${opts}" in -*z*) echo "${archive}";; esac
     case "${opts}" in -*p*) echo "${prefix}";; esac
 }
+# --------------------------------------------------------------------
 if test @"${SCRNAME:-$(basename "$0")}" = @"htriplet"; then
     case "${1}" in
         ''|-h|--help) sed -n 's/^ *#h: \{0,1\}//p' "$0";;

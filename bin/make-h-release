@@ -24,13 +24,12 @@ make_h_release() {
 make_h_release_makefile() {
     sed 's|^    |	|' <<-EOF
 	release:
-	    mkdir -p \$(BUILDDIR)
-	    hrelease -w github -t "\$(TOOLCHAINS)" -N \$(PROJECT) -R \$(VERSION) -o \$(BUILDDIR)/Release
-	    gh release create v\$(VERSION) \$\$(cat \$(BUILDDIR)/Release)
+	    hrelease -w github -t "\$(TOOLCHAINS)" -N \$(PROJECT) -R \$(VERSION) -o .tars
+	    gh release create v\$(VERSION) \$\$(cat .tars)
 	EOF
 }
 make_h_release_gitignore() {
-    true
+    echo ".tars"
 }
 ## -------------------------------------------------------------------
 if test @"${SCRNAME:-$(basename "$0")}" = @"make-h-release"; then

@@ -40,7 +40,7 @@ hdeploy() {
     
     ## Build project.
     echo "hdeploy: hcross: ${cmd}"
-    hcross -d "${dest}" \
+    hcross -d "${dest}" -o HBUILD_SUDO=env \
            ${opt_t:+ -t "${opt_t}" } \
            ${opt_p:+ -p "${opt_p}" } \
            sh -vec "${cmd}"

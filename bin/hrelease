@@ -47,11 +47,12 @@ hrelease() {
     ## For each toolchain.
     for toolchain in ${toolchains}; do
         local machine system format prefix basename archive
-        machine="$( htriplet -m "${toolchain}")"; test -n "${machine}"
-        system="$(  htriplet -s "${toolchain}")"; test -n "${system}"
+        htriplet "${toolchain}"
+        machine="$( htriplet -m "${toolchain}")"
+        system="$(  htriplet -s "${toolchain}")"
         format="$(  htriplet -z "${toolchain}")"; test -n "${format}"
         prefix="$(  htriplet -p "${toolchain}")"; test -n "${prefix}"
-        basename="${name}-${version}_${system}_${machine}"
+        basename="${name}-${version}${system:+_${system}}${machine:+_${machine}}"
         archive="${HBUILD_RELEASE_DIR}/${basename}${format}"
         archives="${archives} ${archive}"
         if test -n "${list}"; then
