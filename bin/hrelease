@@ -18,10 +18,12 @@
 ##:
 . htriplet
 hrelease() {
-    local OPTIND=1 optopt toolchain archives= toolchains= name= version= list= output= winst= remote= url=
+    local OPTIND=1 optopt toolchain archives= toolchains= name=
+    local version= list= output="${HRELEASE_OUTPUT}" winst= remote=
+    local url= version_var=V envs= append=
     
     ## Parse command line arguments.
-    while getopts "Vt:N:R:o:sw:" optopt; do
+    while getopts "Vt:N:R:o:sw:E:e:" optopt; do
         case $optopt in
             V)     echo "HBUILD_RELEASE_DIR: ${HBUILD_RELEASE_DIR}"; return 0;;
             t)     toolchains="${toolchains} $(echo "${OPTARG}" | tr ',' ' ')";;
@@ -30,6 +32,8 @@ hrelease() {
             o)     output="${OPTARG}";;
             s)     list="y";;
             w)     winst="${OPTARG}";;
+            E)     version_var="${OPTARG}";;
+            e)     envs="${envs} ${OPTARG}";;
             \?)    return 1;;
         esac
     done
@@ -64,7 +68,7 @@ hrelease() {
             continue
         fi
         mkdir -p "${HBUILD_RELEASE_DIR}"
-        UNAME_S="${system}" hdeploy -t "${toolchain}" -p "${prefix}" -o "${archive}" "$@"
+        env UNAME_S="${system}" "${version_var}"="${version}" ${envs} hdeploy -t "${toolchain}" -p "${prefix}" -o "${archive}" "$@"
         if test -n "${winst}" && test @"${system}" = @"Windows_NT"; then
             installer="${HBUILD_RELEASE_DIR}/${basename}.bat"
             if test @"${winst}" = @"github"; then
@@ -113,7 +117,7 @@ hrelease() {
         echo "Creating ${output} ..."
         for archive in ${archives}; do
             echo "${archive}"
-        done > "${output}"
+        done | tee ${HRELEASE_OUTPUT:+ -a } "${output}"
     fi
     
 }
