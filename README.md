@@ -131,11 +131,12 @@ You can write them manually:
 
 ## Collaborating
 
-For making bug reports, feature requests, support or consulting visit
-one of the following links:
+Feel free to open bug reports and feature/pull requests.
 
-1. [gemini://harkadev.com/oss/](gemini://harkadev.com/oss/)
-2. [https://harkadev.com/oss/](https://harkadev.com/oss/)
+More software like this here:
+
+1. [https://harkadev.com/prj/](https://harkadev.com/prj/)
+2. [https://devreal.org](https://devreal.org)
 ## Help
 
 aarch64-linux-gnu-env
@@ -281,18 +282,46 @@ img2tar
     
     Requires: mount/umount/losetup/tar/fdisk/tar
 
-make-h-release
+lsetup-gcc-glibc
 
-    Usage: make-h-release ...
+    Usage: lsetup-gcc-glibc ...
     
-    Add "release" target to GNUmakefile that uses "htoolchain" that
-    uploads built tars/zips to github.
+    Build a C/C++ compiler the CLFS way.
     
-      makefile    Print 'Makefile'.
-      gitignore   Print '.gitignore'.
+     ... show        Show configuration.
+     ... all         Build the missing parts of the whole toolchain.
+     ... all-force   Build the whole toolchain.
+     ... remove      Remove installation.
     
-    You should add "TOOLCHAINS" variable to the makefile manually, for
-    example: x86_64-w64-mingw32 x86_64-linux-musl
+     ... prefix                          Install prefix.
+     ... linux-headers                   Install Linux kernel headers.
+     ... pkg-config                      Install pkg-config.
+     ... binutils                        Install linker/assembler/...
+     ... gmp,mpfr,mpc,isl                Install GCC dependencies.
+     ... gcc-basic,glibc,libstdc++,gcc   Install C library and GCC.
+     ... script                          Install Environment script.
+    
+    Once compiled use 'hcross -t x86_64-ht-linux-gnu' to compile.
+
+lsetup-gcc-musl
+
+    Usage: lsetup-gcc-musl ...
+    
+    This program helps building a GCC/MUSL toolchain in /opt/musl.
+    
+     ... show        Show configuration.
+     ... all         Perform all missing steps.
+     ... all-force   Perform all steps.
+     ... remove      Remove toolchain.
+    
+     ... i-tooldir  : Create tool directory and users.
+     ... i-build    : Download and build MUSL cross compiler.
+     ... i-headers  : Install headers.
+     ... i-wrappers : Install wrappers.
+     ... i-scripts  : Install environment scripts.
+     ... i-libfts   : Install libfts.
+    
+    Once compiled use 'hcross -t x86_64-linux-musl'.
 
 sysroot-fix
 

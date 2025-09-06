@@ -64,7 +64,7 @@ hrelease() {
             continue
         fi
         mkdir -p "${HBUILD_RELEASE_DIR}"
-        hdeploy -t "${toolchain}" -p "${prefix}" -o "${archive}" "$@"
+        UNAME_S="${system}" hdeploy -t "${toolchain}" -p "${prefix}" -o "${archive}" "$@"
         if test -n "${winst}" && test @"${system}" = @"Windows_NT"; then
             installer="${HBUILD_RELEASE_DIR}/${basename}.bat"
             if test @"${winst}" = @"github"; then

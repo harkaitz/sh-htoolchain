@@ -1,0 +1,372 @@
+#!/bin/sh -e
+##:
+#h: Usage: lsetup-gcc-glibc ...
+#h:
+#h: Build a C/C++ compiler the CLFS way.
+#h:
+#h:  ... show        Show configuration.
+#h:  ... all         Build the missing parts of the whole toolchain.
+#h:  ... all-force   Build the whole toolchain.
+#h:  ... remove      Remove installation.
+#h:
+#h:  ... prefix                          Install prefix.
+#h:  ... linux-headers                   Install Linux kernel headers.
+#h:  ... pkg-config                      Install pkg-config.
+#h:  ... binutils                        Install linker/assembler/...
+#h:  ... gmp,mpfr,mpc,isl                Install GCC dependencies.
+#h:  ... gcc-basic,glibc,libstdc++,gcc   Install C library and GCC.
+#h:  ... script                          Install Environment script.
+#h:
+#h: Once compiled use 'hcross -t x86_64-ht-linux-gnu' to compile.
+##:
+. lrun
+. hlog
+. hmain
+. hfile
+. vrun
+. vcd
+. getsrc-tar
+tc_gcc_glibc() {
+    local cmd="$1"
+    shift
+    case "${cmd}" in
+        show)          tc_gcc_glibc_show_variables ;;
+        all)           htoolchain_clfs_all         ;;
+        all-force)     FORCE=y htoolchain_clfs_all ;;
+        remove)        clfs_remove        ;;
+        prefix)        clfs_prefix        ;;
+        linux-headers) clfs_linux_headers ;;
+        pkg-config)    clfs_pkg_config    ;;
+        binutils)      clfs_binutils      ;;
+        gmp)           clfs_gmp           ;;
+        mpfr)          clfs_mpfr          ;;
+        mpc)           clfs_mpc           ;;
+        isl)           clfs_isl           ;;
+        gcc-basic)     clfs_gcc_basic     ;;
+        glibc)         clfs_glibc         ;;
+        libstdc++)     clfs_libstdcpp     ;;
+        gcc)           clfs_gcc           ;;
+        script)        clfs_script        ;;
+        *)             hlog fatal "Invalid subcommand: ${cmd}.";;
+    esac
+}
+tc_gcc_glibc_show_variables() {
+    cat <<-EOF
+	CLFS_TARGET        : ${CLFS_TARGET}
+	CLFS_TOOLDIR       : ${CLFS_TOOLDIR}
+	CLFS_SYSROOT       : ${CLFS_SYSROOT}
+	CLFS_ENV_SCRIPT    : ${CLFS_ENV_SCRIPT}
+	CLFS_GLIBC_MINIMAL : ${CLFS_GLIBC_MINIMAL}
+	FORCE              : ${FORCE}
+	EOF
+}
+tc_gcc_glibc_calc_variables() {
+    CLFS_TARGET="${CLFS_TARGET:-x86_64-ht-linux-gnu}"
+    CLFS_TOOLDIR="${CLFS_TOOLDIR:-/compiler}"
+    CLFS_SYSROOT="${CLFS_SYSROOT:-/compiler/${CLFS_TARGET}}"
+    CLFS_ENV_SCRIPT="${CLFS_ENV_SCRIPT:-/usr/local/bin/${CLFS_TARGET}-env}"
+    CLFS_GLIBC_MINIMAL="${CLFS_GLIBC_MINIMAL:-2.11}"
+    GETSRC_FORCE="${GETSRC_FORCE:-${FORCE:+y}}"
+    export PATH="${CLFS_TOOLDIR}/bin:${PATH}"
+}
+tc_gcc_glibc_check_environment() {
+    if ! which rsync >/dev/null 2>&1; then
+        echo >&2 "error: Please install rsync."
+        return 1
+    fi
+}
+## -------------------------------------------------------------------
+htoolchain_clfs_all() {
+    if true;then
+        lrun -f clfs_prefix clfs_prefix
+    fi 
+    if test ! -f "${CLFS_SYSROOT}/include/linux/uuid.h" || test -n "${FORCE}";then
+        lrun -f clfs_linux_headers clfs_linux_headers
+    fi
+    if test ! -f "${CLFS_TOOLDIR}/bin/${CLFS_TARGET}-pkg-config" || test -n "${FORCE}";then
+        lrun -f clfs_pkg_config clfs_pkg_config
+    fi
+    if test ! -f "${CLFS_TOOLDIR}/bin/${CLFS_TARGET}-ld" || test -n "${FORCE}";then
+        lrun -f clfs_binutils clfs_binutils
+    fi
+    if test ! -f "${CLFS_TOOLDIR}/lib/libgmp.a" || test -n "${FORCE}";then
+        lrun -f clfs_gmp clfs_gmp
+    fi
+    if test ! -f "${CLFS_TOOLDIR}/lib/libmpfr.a" || test -n "${FORCE}";then
+        lrun -f clfs_mpfr clfs_mpfr
+    fi
+    if test ! -f "${CLFS_TOOLDIR}/lib/libmpc.a" || test -n "${FORCE}";then
+        lrun -f clfs_mpc clfs_mpc
+    fi
+    if test ! -f "${CLFS_TOOLDIR}/lib/libisl.a" || test -n "${FORCE}";then
+        lrun -f clfs_isl clfs_isl 
+    fi
+    if test ! -f "${CLFS_TOOLDIR}/bin/${CLFS_TARGET}-gcc" || test -n "${FORCE}";then
+        lrun -f clfs_gcc_basic clfs_gcc_basic
+    fi
+    if test ! -f "${CLFS_SYSROOT}/lib/libc.so" || test -n "${FORCE}";then
+        lrun -f clfs_glibc clfs_glibc
+    fi
+    if test ! -f "${CLFS_SYSROOT}/lib/libstdc++.a" || test -n "${FORCE}";then
+        lrun -f clfs_libstdcpp clfs_libstdcpp
+    fi
+    if test ! -f "${CLFS_TOOLDIR}/lib/gcc/${CLFS_TARGET}/full" || test -n "${FORCE}";then
+        lrun -f clfs_gcc clfs_gcc
+    fi
+    if true;then
+        lrun -f clfs_script clfs_script
+    fi
+}
+clfs_remove() {
+    vrun sudo rm -rf "${CLFS_TOOLDIR}" "${CLFS_ENV_SCRIPT}"
+}
+clfs_prefix() {
+    vrun sudo mkdir -p "${CLFS_TOOLDIR}"
+    vrun sudo chown -R "$(whoami):$(whoami)" "${CLFS_TOOLDIR}"
+    vrun mkdir -p "${CLFS_SYSROOT}"
+    vrun mkdir -p "$(dirname "${CLFS_SYSROOT}/${CLFS_SYSROOT}")"
+    vrun rm -f "${CLFS_SYSROOT}/${CLFS_SYSROOT}"
+    vrun ln -s "${CLFS_SYSROOT}" "${CLFS_SYSROOT}/${CLFS_SYSROOT}"
+    vrun rm -f "${CLFS_SYSROOT}/usr"
+    vrun ln -s "${CLFS_SYSROOT}" "${CLFS_SYSROOT}/usr"
+}
+clfs_linux_headers() {
+    local url="https://www.kernel.org/pub/linux/kernel/v5.x/linux-5.16.9.tar.xz"
+    tc_gcc_glibc_check_environment
+    vcd + "$(getsrc_tar "${url}")"
+    vrun make mrproper
+    vrun make ARCH=x86_64 headers_check
+    vrun make ARCH=x86_64 INSTALL_HDR_PATH="${CLFS_SYSROOT}" headers_install
+    vcd -
+}
+clfs_pkg_config() {
+    local url="http://sourceforge.net/projects/pkgconfiglite/files/0.28-1/pkg-config-lite-0.28-1.tar.gz"
+    vcd + "$(getsrc_tar "${url}")"
+    vrun ./configure                         \
+         --prefix="${CLFS_TOOLDIR}"          \
+         --program-prefix="${CLFS_TARGET}-"  \
+         --disable-host-tool                 \
+         --with-pc-path="${CLFS_SYSROOT}/lib/pkgconfig:${CLFS_SYSROOT}/lib/pkgconfig"
+    vrun make
+    vrun make install
+    vcd -
+}
+clfs_binutils() {
+    local url="http://ftp.gnu.org/gnu/binutils/binutils-2.38.tar.bz2"
+    vcd + "$(getsrc_tar "${url}")"
+    vrun make distclean || true
+    vrun ./configure                      \
+         --prefix="${CLFS_TOOLDIR}"       \
+         --target="${CLFS_TARGET}"        \
+         --with-sysroot="${CLFS_SYSROOT}" \
+         --disable-nls                    \
+         --disable-werror                 \
+         LDFLAGS="-Wl,-rpath,${CLFS_TOOLDIR}/lib"
+    vrun make
+    vrun make install
+    vcd -
+}
+clfs_gmp() {
+    local url="http://ftp.gnu.org/gnu/gmp/gmp-6.2.1.tar.xz"
+    vcd + "$(getsrc_tar "${url}")"
+    vrun make distclean || true
+    vrun ./configure --prefix="${CLFS_TOOLDIR}" LDFLAGS="-Wl,-rpath,${CLFS_TOOLDIR}/lib"
+    vrun nice make
+    vrun make install
+    vcd -
+}
+clfs_mpfr() {
+    local url="https://www.mpfr.org/mpfr-4.1.0/mpfr-4.1.0.tar.xz"
+    vcd + "$(getsrc_tar "${url}")"
+    vrun make distclean || true
+    vrun ./configure                  \
+         --prefix="${CLFS_TOOLDIR}"   \
+         --with-gmp="${CLFS_TOOLDIR}" \
+         LDFLAGS="-Wl,-rpath,${CLFS_TOOLDIR}/lib"
+    vrun nice make
+    vrun make install
+    vcd -
+}
+clfs_mpc() {
+    local url="https://ftp.gnu.org/gnu/mpc/mpc-1.2.1.tar.gz"
+    vcd + "$(getsrc_tar "${url}")"
+    vrun make distclean || true
+    vrun ./configure                          \
+         --prefix="${CLFS_TOOLDIR}"    \
+         --with-gmp="${CLFS_TOOLDIR}"  \
+         --with-mpfr="${CLFS_TOOLDIR}" \
+         LDFLAGS="-Wl,-rpath,${CLFS_TOOLDIR}/lib"
+    vrun nice make
+    vrun make install
+    vcd -
+}
+clfs_isl() {
+    local url="http://archive.ubuntu.com/ubuntu/pool/universe/i/isl-0.18/isl-0.18_0.18.orig.tar.xz"
+    vcd + "$(getsrc_tar "${url}")"
+    vrun make distclean || true
+    vrun ./configure                         \
+         --prefix="${CLFS_TOOLDIR}"          \
+         --with-gmp-prefix="${CLFS_TOOLDIR}" \
+         LDFLAGS="-Wl,-rpath,${CLFS_TOOLDIR}/lib"
+    vrun nice make
+    vrun make install
+    vcd -
+}
+clfs_gcc_download() {
+    local url="https://ftp.gnu.org/gnu/gcc/gcc-11.2.0/gcc-11.2.0.tar.xz"
+    local src="$(getsrc_tar "${url}")"
+    test -n "${src}"
+    if test ! -f "${src}/.p2";then
+        sed -i "
+            /m64=/s|lib64|lib|
+        " "${src}/gcc/config/i386/t-linux64"
+        printf '
+            #undef STANDARD_STARTFILE_PREFIX_1
+            #define STANDARD_STARTFILE_PREFIX_1 "%s/lib/"
+        ' "${CLFS_SYSROOT}" >> "${src}/gcc/config/linux.h"
+        printf '
+            #undef STANDARD_STARTFILE_PREFIX_2
+            #define STANDARD_STARTFILE_PREFIX_2 ""
+        ' >> "${src}/gcc/config/linux.h"
+        touch "${src}/.p2"
+    fi
+    echo "${src}"
+}
+clfs_gcc_basic() {
+    local src="$(clfs_gcc_download)"; test -n "${src}"
+    local bas="$(basename "${src}")"
+    local tmp="${src}-build-basic"
+    rm -rf "${tmp}"
+    mkdir -p "${tmp}"
+    vcd + "${tmp}"
+    vrun "../${bas}/configure"                 \
+         --prefix="${CLFS_TOOLDIR}"            \
+         --target="${CLFS_TARGET}"             \
+         --with-sysroot="${CLFS_SYSROOT}"      \
+         --with-local-prefix="${CLFS_TOOLDIR}" \
+         --with-native-system-header-dir="${CLFS_TOOLDIR}/include" \
+         --with-mpfr="${CLFS_TOOLDIR}"         \
+         --with-gmp="${CLFS_TOOLDIR}"          \
+         --with-isl="${CLFS_TOOLDIR}"          \
+         --with-mpc="${CLFS_TOOLDIR}"          \
+         --with-glibc-version="${CLFS_GLIBC_MINIMAL}" \
+         --enable-default-pie                         \
+         --with-newlib             \
+         --without-headers         \
+         --enable-initfini-array   \
+         --disable-nls             \
+         --disable-shared          \
+         --disable-multilib        \
+         --disable-decimal-float   \
+         --disable-threads         \
+         --disable-libatomic       \
+         --disable-libgomp         \
+         --disable-libquadmath     \
+         --disable-libssp          \
+         --disable-libvtv          \
+         --disable-libstdcxx       \
+         --enable-languages=c,c++  \
+         LDFLAGS="-Wl,-rpath,${CLFS_TOOLDIR}/lib"
+    vrun nice make V=1 -j1 all-gcc all-target-libgcc
+    vrun make V=1 -j1 install-gcc install-target-libgcc
+    vcd -
+}
+clfs_glibc() {
+    local url="http://ftp.gnu.org/gnu/glibc/glibc-2.35.tar.xz"
+    local src="$(getsrc_tar "${url}")"; test -n "${src}"
+    local bas="$(basename "${src}")"
+    local tmp="${src}-build"
+    rm -rf "${tmp}"
+    mkdir -p "${tmp}"
+    sed -i 's/\\$$(pwd)/`pwd`/' ${src}/timezone/Makefile
+    vcd + "${tmp}"
+    echo "libc_cv_ssp=no" > config.cache
+    vrun env                                      \
+         BUILD_CC="gcc"                           \
+         CC="${CLFS_TARGET}-gcc -m64"             \
+         AR="${CLFS_TARGET}-ar"                   \
+         RANLIB="${CLFS_TARGET}-ranlib"           \
+         "../${bas}/configure"                    \
+         --host="${CLFS_TARGET}"                  \
+         --prefix="${CLFS_SYSROOT}"               \
+         --enable-kernel=3.12.0                   \
+         --with-headers="${CLFS_SYSROOT}/include" \
+         --enable-obsolete-rpc                    \
+         --disable-werror                         \
+         --with-binutils="${CLFS_TOOLDIR}/bin"    \
+         --cache-file=config.cache
+    vrun nice make V=1 -j"${NPROC}"
+    vrun make V=1 -j"${NPROC}" install
+    vcd -
+}
+clfs_libstdcpp() {
+    local src="$(clfs_gcc_download)"; test -n "${src}"
+    local bas="$(basename "${src}")"
+    local tmp="${src}-build-libstdcpp"
+    rm -rf "${tmp}"
+    mkdir -p "${tmp}"
+    vcd + "${tmp}"
+    vrun "../${bas}/libstdc++-v3/configure"  \
+         --host="${CLFS_TARGET}"             \
+         --build="`../${bas}/config.guess`"  \
+         --prefix="${CLFS_SYSROOT}"          \
+         --disable-multilib                  \
+         --disable-nls                       \
+         --disable-libstdcxx-pch
+    vrun nice make V=1 -j"${NPROC}" all
+    vrun make V=1 -j"${NPROC}" install
+    vcd -
+}
+clfs_gcc() {
+    local src="$(clfs_gcc_download)"
+    test -n "${src}"
+    local bas="`basename "${src}"`"
+    local tmp="${src}-build-full"
+    rm -rf "${tmp}"
+    mkdir -p "${tmp}"
+    vcd + "${tmp}"
+    vrun "../${bas}/configure"                        \
+         --prefix="${CLFS_TOOLDIR}"                   \
+         --target="${CLFS_TARGET}"                    \
+         --with-sysroot="${CLFS_SYSROOT}"             \
+         --with-local-prefix="${CLFS_TOOLDIR}"        \
+         --with-mpfr="${CLFS_TOOLDIR}"                \
+         --with-gmp="${CLFS_TOOLDIR}"                 \
+         --with-isl="${CLFS_TOOLDIR}"                 \
+         --with-mpc="${CLFS_TOOLDIR}"                 \
+         --with-glibc-version="${CLFS_GLIBC_MINIMAL}" \
+         --enable-initfini-array                      \
+         --enable-default-pie                         \
+         --disable-nls                                \
+         --disable-multilib                           \
+         --enable-threads=posix                       \
+         --disable-decimal-float                      \
+         --disable-libatomic                          \
+         --disable-libgomp                            \
+         --disable-libquadmath                        \
+         --disable-libssp                             \
+         --disable-libvtv                             \
+         --disable-libstdcxx                          \
+         --enable-languages=c,c++                     \
+         LDFLAGS="-Wl,-rpath,${CLFS_TOOLDIR}/lib"
+    vrun nice make V=1 -j"${NPROC}" all
+    vrun make V=1 -j"${NPROC}" install
+    vrun touch "${CLFS_TOOLDIR}/lib/gcc/${CLFS_TARGET}/full"
+    vcd -
+}
+clfs_script() {
+    hlog info "Creating ${CLFS_ENV_SCRIPT} ..."
+    hfile wrapper sudo "${CLFS_ENV_SCRIPT}" <<-EOF
+	#!/bin/sh -e
+	. hcross-env-c
+	hcross_env_c                      \\
+	    type=gnu                      \\
+	    path="${CLFS_TOOLDIR}/bin"    \\
+	    tool_prefix="${CLFS_TARGET}-" \\
+	    prefix="${CLFS_SYSROOT}/usr"  \\
+	    prefixes="${CLFS_SYSROOT}/usr ${CLFS_SYSROOT}" \\
+	    linker="${CLFS_SYSROOT}/lib/ld-linux-x86-64.so.2"
+	EOF
+}
+## -------------------------------------------------------------------
+hmain -f "lsetup-gcc-glibc" -C tc_gcc_glibc "$@"

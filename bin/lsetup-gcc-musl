@@ -1,0 +1,227 @@
+#!/bin/sh -e
+##:
+#h: Usage: lsetup-gcc-musl ...
+#h:
+#h: This program helps building a GCC/MUSL toolchain in /opt/musl.
+#h:
+#h:  ... show        Show configuration.
+#h:  ... all         Perform all missing steps.
+#h:  ... all-force   Perform all steps.
+#h:  ... remove      Remove toolchain.
+#h:
+#h:  ... i-tooldir  : Create tool directory and users.
+#h:  ... i-build    : Download and build MUSL cross compiler.
+#h:  ... i-headers  : Install headers.
+#h:  ... i-wrappers : Install wrappers.
+#h:  ... i-scripts  : Install environment scripts.
+#h:  ... i-libfts   : Install libfts.
+#h:
+#h: Once compiled use 'hcross -t x86_64-linux-musl'.
+##:
+. hlog
+. lrun
+. vcd
+. vrun
+. hmain
+. getsrc-git
+tc_gcc_musl() {
+    local cmd="$1"
+    shift
+    case "${cmd}" in
+        show)       tc_gcc_musl_show_variables ;;
+        i-tooldir)  musl_create_tooldir        ;;
+        i-build)    musl_build                 ;;
+        i-headers)  musl_install_headers       ;;
+        i-wrappers) musl_install_wrappers      ;;
+        i-scripts)  musl_install_scripts       ;;
+        i-libfts)   musl_install_libfts        ;;
+        all)        musl_all                   ;;
+        all-force)  FORCE=y musl_all           ;;
+        remove)     musl_remove                ;;
+        *)          hlog fatal "Invaild argument: ${cmd}.";;
+    esac
+}
+tc_gcc_musl_show_variables() {
+    cat <<-EOF
+	MUSL_CROSS_URL : ${MUSL_CROSS_URL}
+	LIBFTS_GIT_URL : ${LIBFTS_GIT_URL}
+	MUSL_TARGET    : ${MUSL_TARGET}
+	MUSL_TOOLDIR   : ${MUSL_TOOLDIR}
+	MUSL_SYSROOT   : ${MUSL_SYSROOT}
+	MUSL_SCRDIR    : ${MUSL_SCRDIR}
+	FORCE          : ${FORCE}
+	EOF
+}
+tc_gcc_musl_calc_variables() {
+    ## URLS
+    MUSL_CROSS_URL="${MUSL_CROSS_URL:-https://github.com/richfelker/musl-cross-make.git,master}"
+    LIBFTS_GIT_URL="${LIBFTS_GIT_URL:-https://github.com/pullmoll/musl-fts.git}"
+    ## DIRECTORIES
+    MUSL_TARGET="${MUSL_TARGET:-x86_64-linux-musl}"
+    MUSL_TOOLDIR="${MUSL_TOOLDIR:-/compiler}"
+    MUSL_SYSROOT="${MUSL_SYSROOT:-${MUSL_TOOLDIR}/${MUSL_TARGET}}"
+    MUSL_SCRDIR="${MUSL_SCRDIR:-/usr/local/bin}"
+}
+## -------------------------------------------------------------------
+musl_remove() {
+    vrun sudo rm -rf "${MUSL_TOOLDIR:-/ign}" "${MUSL_SCRDIR}/${MUSL_TARGET}-env"
+}
+musl_create_tooldir() {
+    vrun sudo mkdir -p "${MUSL_TOOLDIR}"
+    vrun sudo chown -R "$(whoami):$(whoami)" "${MUSL_TOOLDIR}/."
+}
+musl_build() {
+    local w=
+    local sdir="$(getsrc_git "${MUSL_CROSS_URL}")"; test -n "${sdir}"
+    local bdir="${sdir}/build/local/${MUSL_TARGET}"
+    vcd + "${sdir}"
+    rm -f \
+       "${MUSL_TOOLDIR}/bin/${MUSL_TARGET}-gcc" \
+       "${MUSL_TOOLDIR}/bin/${MUSL_TARGET}-g++" \
+       "${MUSL_TOOLDIR}/bin/${MUSL_TARGET}-ld"
+    if test ! -f "${bdir}/.done"; then
+        sed -i '
+        /^FULL_MUSL_CONFIG/s| = | = --disable-shared CFLAGS="-fPIC" |
+        ' litecross/Makefile
+        vrun make                     \
+             TARGET="${MUSL_TARGET}"  \
+             OUTPUT="${MUSL_TOOLDIR}/." \
+             BINUTILS_CONFIG="--enable-gold"
+        touch "${bdir}/.done"
+    fi
+    vrun make install TARGET="${MUSL_TARGET}" OUTPUT="${MUSL_TOOLDIR}/."
+    for w in "${MUSL_TOOLDIR}/bin/${MUSL_TARGET}-gcc" \
+             "${MUSL_TOOLDIR}/bin/${MUSL_TARGET}-g++" \
+             "${MUSL_TOOLDIR}/bin/${MUSL_TARGET}-ld"
+    do
+        mv "${w}" "${w}.bin";
+    done
+    vcd -
+}
+musl_install_headers() {
+    if test ! -f "${MUSL_SYSROOT}/include/sys/queue.h"; then
+        hlog info "Copying ${MUSL_SYSROOT}/include/sys/queue.h ..."
+        mkdir -p "${MUSL_SYSROOT}/include/sys"
+        find /usr/include -iregex '.*/sys/queue\.h$' -exec cp '{}' "${MUSL_SYSROOT}/include/sys" ';'
+    fi
+    if test ! -f "${MUSL_SYSROOT}/include/sys/cdefs.h"; then
+        hlog info "Creating ${MUSL_SYSROOT}/include/sys/cdefs.h"
+        mkdir -p "${MUSL_SYSROOT}/include/sys"
+        cat > "${MUSL_SYSROOT}/include/sys/cdefs.h" <<-EOF
+	#ifdef __cplusplus
+	#  define __BEGIN_DECLS extern "C" {
+	#else
+	#  define __BEGIN_DECLS
+	#endif	
+	#ifdef __cplusplus
+	#  define __END_DECLS }
+	#else
+	#  define __END_DECLS
+	#endif
+	EOF
+    fi
+    if test ! -e "${MUSL_SYSROOT}/include/arch/inttypes.h"; then # Required by SCC
+        mkdir -p "${MUSL_SYSROOT}/include/arch"
+        touch "${MUSL_SYSROOT}/include/arch/inttypes.h"
+    fi
+}
+musl_install_wrappers() {
+    local w='' b='' libs=''
+    libs="${libs} -Wl,--start-group -Wl,--whole-archive"
+    libs="${libs} -l:libc.a"
+    libs="${libs} -Wl,--no-whole-archive -Wl,--end-group"
+    for b in gcc g++ ld; do
+        w="${MUSL_TOOLDIR}/bin/${MUSL_TARGET}-${b}"
+        hlog info "Wrapping ${w} ..."
+        case "${b}" in
+            gcc|g++) hfile wrapper "${w}" <<-EOF
+		#!/bin/sh -e
+		exec "${w}.bin" \\
+		    \${LINK_USE_GOLD:+ -fuse-ld=gold }               \\
+		    -static-libstdc++ -static-libgcc                 \\
+		    -fPIC -fcommon -fno-stack-protector              \\
+		    \${LINK_NO_AS_NEEDED:+ -Wl,--no-as-needed }      \\
+		    -Wl,-z,stack-size=1048576                        \\
+		    -Wl,--dynamic-linker=/lib64/ld-linux-x86-64.so.2 \\
+		    -Wl,--allow-multiple-definition                  \\
+		    \${LD_GROUP_DEPS:+ -Wl,--start-group }           \\
+		    "\$@"                                            \\
+		    \${LD_GROUP_DEPS:+ -Wl,--end-group }             \\
+		    -Wl,-rpath,${MUSL_SYSROOT}/usr/lib               \\
+		    \${LINK_LIBC:+ ${libs} }
+		EOF
+                ;;
+            ld) hfile wrapper "${w}" <<-EOF
+		#!/bin/sh -e
+		if test -n "\${LINK_USE_GOLD}"; then
+		    ld="${w}.gold"
+		else
+		    ld="${w}.bin"
+		fi
+		exec "\${ld}"                                    \\
+		    --no-as-needed                               \\
+		    -z stack-size=1048576                        \\
+		    --dynamic-linker=/lib64/ld-linux-x86-64.so.2 \\
+		    --allow-multiple-definition                  \\
+		    \${LD_GROUP_DEPS:+ -Wl,--start-group }       \\
+		    "\$@"                                        \\
+		    \${LD_GROUP_DEPS:+ -Wl,--end-group }         \\
+		    -rpath,${MUSL_SYSROOT}/usr/lib               \\
+		    \${LINK_LIBC:+ ${libs} }
+		EOF
+        esac
+    done
+}
+musl_install_scripts() {
+    local s="${MUSL_SCRDIR}/${MUSL_TARGET}-env"
+    ##
+    hlog info "Creating ${s} ..."
+    sudo tee "${s}" <<-EOF >/dev/null
+	#!/bin/sh -e
+	. hcross-env-c
+	hcross_env_c                            \\
+	    type=gnu                            \\
+	    path="${MUSL_TOOLDIR}/bin"          \\
+	    ldflags="-Wl,-z,stack-size=1048576" \\
+	    tool_prefix="${MUSL_TARGET}-"       \\
+	    prefix="${MUSL_SYSROOT}/usr"        \\
+	    prefixes="${MUSL_SYSROOT}/usr ${MUSL_SYSROOT}"
+	EOF
+    sudo chmod +x "${s}"
+    ## Static was:
+    ## -static-libstdc++ -static-libgcc
+    ## 
+    ## -Wl,--exclude-libs,libz.a
+    ## -Wl,--whole-archive -l:libc.a -Wl,--no-whole-archive
+    ## ldflags="${libstd} ${hacks} ${exclude} ${libc}"
+}
+musl_install_libfts() {
+    vcd + "$(getsrc_git "${LIBFTS_GIT_URL}")"
+    hcross -t "${MUSL_TARGET}" eval '
+        sh bootstrap.sh
+        hautotools all --disable-shared
+    '
+    vcd -
+}
+## -------------------------------------------------------------------
+musl_all() {
+    if test ! -f "${MUSL_TOOLDIR}/bin/${MUSL_TARGET}-gcc.bin" || test -n "${FORCE}"; then
+        musl_create_tooldir
+        lrun musl-build musl_build
+    fi
+    if test ! -f "${MUSL_SYSROOT}/include/sys/queue.h" || test -n "${FORCE}"; then
+        lrun musl-headers musl_install_headers
+    fi
+    if true; then
+        lrun musl-wrappers musl_install_wrappers
+    fi
+    if true; then
+        lrun musl-scripts musl_install_scripts
+    fi
+    if test ! -f "${MUSL_SYSROOT}/usr/include/fts.h"; then
+        lrun musl-libfts musl_install_libfts
+    fi
+}
+## -------------------------------------------------------------------
+tc_gcc_musl_calc_variables
+hmain -f "lsetup-gcc-musl" tc_gcc_musl "$@"
