@@ -49,15 +49,15 @@ hrelease() {
     
     ## For each toolchain.
     for toolchain in ${toolchains}; do
-        local machine system format prefix basename archive
+        local machine system format basename archive enva
         htriplet "${toolchain}"
         machine="$( htriplet -m "${toolchain}")"
         system="$(  htriplet -s "${toolchain}")"
-        format="$(  htriplet -z "${toolchain}")"; test -n "${format}"
-        prefix="$(  htriplet -p "${toolchain}")"; test -n "${prefix}"
+        format="$(  htriplet -z "${toolchain}")";
         basename="${name}-${version}${system:+_${system}}${machine:+_${machine}}"
-        archive="${HBUILD_RELEASE_DIR}/${basename}${format}"
+        archive="${HBUILD_RELEASE_DIR}/${basename}.tar.gz"
         archives="${archives} ${archive}"
+        enva="UNAME_S=${system} ${version_var}=${version} ${envs}"
         if test -n "${list}"; then
             if test ! -f "${archive}"; then
                 echo >&2 "error: ${archive}: Not found."
@@ -67,20 +67,11 @@ hrelease() {
             continue
         fi
         mkdir -p "${HBUILD_RELEASE_DIR}"
-        env UNAME_S="${system}"           \
-            "${version_var}"="${version}" \
-            ${envs}                       \
-            hdeploy -t "${toolchain}" -p "${prefix}" -o "${archive}" "$@"
-        case "${archive}" in
-            *.zip)
-                env \
-                    UNAME_S="${system}"           \
-                    "${version_var}"="${version}" \
-                    ${envs}                       \
-                    hdeploy -t "${toolchain}" -p "${prefix}" -o "${archive%.zip}.tar.gz" "$@"
-                archives="${archives} ${archive%.zip}.tar.gz"
-                ;;
-        esac
+        env ${enva} hdeploy -t "${toolchain}" -p "/" -o "${archive}" "$@"
+        if test @"${system}" = @"Windows_NT"; then
+            env ${enva} hdeploy -t "${toolchain}" -p "/" -o "${archive%.tar.gz}.zip" "$@"
+            archives="${archives} ${archive%.tar.gz}.zip"
+        fi
     done
     
     ## Save list.
@@ -90,7 +81,6 @@ hrelease() {
             echo "${archive}"
         done | tee ${HRELEASE_OUTPUT:+ -a } "${output}"
     fi
-    
 }
 ## -------------------------------------------------------------------
 HBUILD_RELEASE_DIR="${HBUILD_RELEASE_DIR:-${HOME}/.Releases}"

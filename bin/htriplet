@@ -1,12 +1,11 @@
 #!/bin/sh -e
 ##:
-#h: Usage: htriplet {-m, -s, -z, -p} TRIPLET|noarch-OS-SYS
+#h: Usage: htriplet {-m, -s} TRIPLET|noarch-OS-SYS
 #h:
-#h: Print machine (-m) system (-s) archive format (-z) and preferred
-#h: prefix (-p) of the tripplet.
+#h: Print machine (-m) system (-s).
 ##:
 htriplet() {
-    local machine= system= archive= opts=
+    local machine= system= opts=
     case "$1" in -*) opts="$1"; shift;; esac
     case "$1" in
         noarch)      machine="";;
@@ -24,16 +23,9 @@ htriplet() {
         *-mingw*)    system="Windows_NT";;
         *) echo >&2 "error: $1: Unknown machine."; return 1;;
     esac
-    case "$system" in
-        '')          archive=".tar.gz" prefix="/usr/local";;
-        Linux)       archive=".tar.gz" prefix="/usr/local";;
-        Windows_NT)  archive=".zip"    prefix="/";;
-        *)           archive=".tar.gz" prefix="/usr/local";;
-    esac
     case "${opts}" in -*m*) echo "${machine}";; esac
     case "${opts}" in -*s*) echo "${system}" ;; esac
     case "${opts}" in -*z*) echo "${archive}";; esac
-    case "${opts}" in -*p*) echo "${prefix}";; esac
 }
 # --------------------------------------------------------------------
 if test @"${SCRNAME:-$(basename "$0")}" = @"htriplet"; then
