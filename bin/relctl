@@ -1,0 +1,161 @@
+#!/bin/sh -e
+##:
+#h: Usage: relctl { -V | ... }
+#h:
+#h: Organize software build and release with "RELCTL.lst".
+#h:
+#h: ... help             : Print help on "RELCTL.lst" format.
+#h: ... ls               : List packages.
+#h: ... [build] [PKG...] : List and build packages.
+#h: ... upload  [PKG...] : List and upload built packages.
+#h:
+#h: Environment variable: RELEASE_DIR
+##:
+relctl() {
+    local cmd="$1"
+    shift
+    case "${cmd}" in
+        help)   relctl_help  ;;
+        ls)     relctl_list  ;;
+        build)  relctl_build "$@" ;;
+        upload) relctl_upload "$@" ;;
+        *)      relctl_build "${cmd}" "$@" ;;
+    esac
+}
+# --------------------------------------------------------------------
+relctl_help() {
+    ${PAGER_MARKDOWN:-cat} <<-EOF
+	## RELCTL.lst
+	
+	The file follows the following format:
+	
+	    R ; <release-site> ; <upload-command>
+	    E ; <shell-code>
+	    E ; ...
+	    P ; <package> ; <version> ; <release-site> ; <description> ; <command>
+	    P ; ...
+	
+	On the upload command the following variables are available.
+	
+	    - Those defined in the "E" section.
+	    - \`\$V\` : Version.
+	    - \`\$O\` : The file to list generated files.
+	    - \`\$RELEASE_LIST\`   : For hrelease (exported).
+	    - \`\$GETSRC_FORCE=y\` : For getsrc (exported).
+	
+	On the upload command you have:
+	
+	    - Those defined in the "E" section.
+	    - \`\$NAME\`        : The package name plus version.
+	    - \`\$DESCRIPTION\` : The package description.
+	    - \`\$@\`           : The files to release.
+	
+	EOF
+}
+relctl_list() {
+    while IFS=';' read -r pkg version repo desc command; do
+        printf '%-20s : %s\n' "${pkg} (${repo})" "${desc}"
+    done <<-EOF
+	$(relctl_dump)
+	EOF
+}
+relctl_build() {
+    if test ! -n "${1}"; then
+        relctl_list >&2
+        echo >&2
+        echo "error: Please specify a package to build." >&2
+        return 1
+    fi
+    local pkg_sel="$1" pkg_dir
+    local command_pre="$(relctl_pre)"
+    while IFS=';' read -r pkg version repo desc command; do
+        test @"${pkg}" = @"${pkg_sel}" || continue
+        pkg_dir="${RELEASE_DIR}/relpkg/${repo}"
+        pkg_lst="${pkg_dir}/${pkg}-${version}.lst"
+        pkg_txt="${pkg_dir}/${pkg}-${version}.txt"
+        mkdir -p "${pkg_dir}"
+        rm -f "${pkg_lst}"
+        env RELEASE_LIST="${pkg_lst}" GETSRC_FORCE=y sh -ec "
+            V='${version}' O='${pkg_lst}'
+            ${command_pre}
+            ${command}
+        "
+        if test @"${desc}" = @"-"; then
+            echo -n '' > "${pkg_txt}"
+        else
+            echo "${desc}" > "${pkg_txt}"
+        fi
+    done <<-EOF
+	$(relctl_dump)
+	EOF
+}
+relctl_upload() {
+    local repo command repo_dir
+    IFS=';' read -r repo command <<-EOF
+	$(relctl_repo)
+	EOF
+    if test ! -n "${repo}" || test ! -n "${command}"; then
+        echo "error: Can't find 'R' field in RELCTL." >&2
+        return 1
+    fi
+    repo_dir="${RELEASE_DIR}/relpkg/${repo}"
+    if test ! -d "${repo_dir}"; then
+        echo "error: Directory '${repo_dir}' not found." >&2
+        return 1
+    fi
+    if test ! -n "$1"; then
+        for name in $(find "${repo_dir}" -name '*.lst' -exec basename '{}' '.lst' ';'); do
+            desc="$(test ! -f "${repo_dir}/${name}.txt" || cat "${repo_dir}/${name}.txt")"
+            printf '%-20s : %s\n' "${name}" "${desc}" 
+        done >&2
+        echo "" >&2
+        echo "error: Please select a package to upload." >&2
+        return 0
+    fi
+    name="$1"
+    file_lst="${repo_dir}/${name}.lst"
+    file_txt="${repo_dir}/${name}.txt"
+    if test ! -f "${file_lst}"; then
+        echo "error: File '${file_lst}' not found." >&2
+        return 1
+    fi
+    tars="$(cat "${file_lst}")"
+    if test ! -n "${tars}"; then
+        echo "error: Empty file '${file_lst}'." >&2
+        return 1
+    fi
+    desc="$(test ! -f "${file_txt}" || cat "${file_txt}")"
+    env \
+        NAME="${name}" \
+        DESCRIPTION="${desc}" \
+        sh -ec "
+            $(relctl_pre)
+            ${command}
+    " -- ${tars}
+}
+# --------------------------------------------------------------------
+relctl_repo() {
+    if test -f RELCTL; then
+        sed -n 's|^R *\; *||p' RELCTL | sed 's| *\; *|\;|g'
+    fi
+}
+relctl_dump() {
+    if test -f RELCTL; then
+        sed 's| *\; *|\;|g' RELCTL | sed 's|\;\;|\;-\;|g' | sed -n 's|P\;||p'
+    fi
+}
+relctl_pre() {
+    if test -f RELCTL; then
+        sed -n 's|^E *\; *||p' RELCTL
+    fi
+}
+# --------------------------------------------------------------------
+: ${RELEASE_DIR:=${HOME}/.Releases}
+if test @"${0##*/}" = @"relctl"; then
+    export MSYS_NO_PATHCONV=1
+    case "${1}" in
+        ''|-h|--help) sed -n 's/^ *#h: \{0,1\}//p' "$0";;
+        -V)  echo "RELEASE_DIR : ${RELEASE_DIR}";;
+        *)   relctl "$@"; exit 0;;
+    esac
+fi

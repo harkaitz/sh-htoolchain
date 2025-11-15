@@ -14,26 +14,25 @@
 #h:       hrelease -t "$(TOOLCHAINS)" -N $(PROJECT) -R $(VERSION) -o $(BUILDDIR)/Release
 #h:       gh release create v$(VERSION) $$(cat $(BUILDDIR)/Release)
 #h:
-#h: Environment variables: HBUILD_RELEASE_DIR
+#h: Environment variables: RELEASE_DIR, RELEASE_LIST, RELEASE_TARGETS
 ##:
 . htriplet
 hrelease() {
-    local OPTIND=1 optopt toolchain archives= toolchains= name=
-    local version= list= output="${HRELEASE_OUTPUT}" remote=
+    local OPTIND=1 optopt toolchain archives= toolchains="${RELEASE_TARGETS}" name=
+    local version= list= output="${RELEASE_LIST}" remote=
     local url= version_var=V envs= append=
     
     ## Parse command line arguments.
-    while getopts "Vt:N:R:o:sE:e:" optopt; do
+    while getopts "t:N:R:o:sE:e:" optopt; do
         case $optopt in
-            V)     echo "HBUILD_RELEASE_DIR: ${HBUILD_RELEASE_DIR}"; return 0;;
-            t)     toolchains="${toolchains} $(echo "${OPTARG}" | tr ',' ' ')";;
-            N)     name="${OPTARG}";;
-            R)     version="${OPTARG}";;
-            o)     output="${OPTARG}";;
-            s)     list="y";;
-            E)     version_var="${OPTARG}";;
-            e)     envs="${envs} ${OPTARG}";;
-            \?)    return 1;;
+            t)  toolchains="${toolchains} $(echo "${OPTARG}" | tr ',' ' ')";;
+            N)  name="${OPTARG}";;
+            R)  version="${OPTARG}";;
+            o)  output="${OPTARG}";;
+            s)  list="y";;
+            E)  version_var="${OPTARG}";;
+            e)  envs="${envs} ${OPTARG}";;
+            \?) return 1;;
         esac
     done
     shift $(( $OPTIND - 1 ))
@@ -55,7 +54,7 @@ hrelease() {
         system="$(  htriplet -s "${toolchain}")"
         format="$(  htriplet -z "${toolchain}")";
         basename="${name}-${version}${system:+_${system}}${machine:+_${machine}}"
-        archive="${HBUILD_RELEASE_DIR}/${basename}.tar.gz"
+        archive="${RELEASE_DIR}/${basename}.tar.gz"
         archives="${archives} ${archive}"
         enva="UNAME_S=${system} ${version_var}=${version} ${envs}"
         if test -n "${list}"; then
@@ -66,7 +65,7 @@ hrelease() {
             echo "${archive}"
             continue
         fi
-        mkdir -p "${HBUILD_RELEASE_DIR}"
+        mkdir -p "${RELEASE_DIR}"
         env ${enva} hdeploy -t "${toolchain}" -p "/" -o "${archive}" "$@"
         if test @"${system}" = @"Windows_NT"; then
             env ${enva} hdeploy -t "${toolchain}" -p "/" -o "${archive%.tar.gz}.zip" "$@"
@@ -79,14 +78,15 @@ hrelease() {
         echo "Creating ${output} ..."
         for archive in ${archives}; do
             echo "${archive}"
-        done | tee ${HRELEASE_OUTPUT:+ -a } "${output}"
+        done | tee ${RELEASE_LIST:+ -a } "${output}"
     fi
 }
 ## -------------------------------------------------------------------
-HBUILD_RELEASE_DIR="${HBUILD_RELEASE_DIR:-${HOME}/.Releases}"
-if test @"${SCRNAME:-$(basename "$0")}" = @"hrelease"; then
+: ${RELEASE_DIR:=${HOME}/.Releases}
+if test @"${0##*/}" = @"hrelease"; then
     case "${1}" in
         ''|-h|--help) sed -n 's/^ *#h: \{0,1\}//p' "$0";;
-        *)            hrelease "$@"; exit 0;;
+        -V)  echo "RELEASE_DIR: ${RELEASE_DIR}"; exit 0;;
+        *)   hrelease "$@"; exit 0;;
     esac
 fi

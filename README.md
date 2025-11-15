@@ -261,14 +261,13 @@ hrelease
           hrelease -t "$(TOOLCHAINS)" -N $(PROJECT) -R $(VERSION) -o $(BUILDDIR)/Release
           gh release create v$(VERSION) $$(cat $(BUILDDIR)/Release)
     
-    Environment variables: HBUILD_RELEASE_DIR
+    Environment variables: RELEASE_DIR, RELEASE_LIST, RELEASE_TARGETS
 
 htriplet
 
-    Usage: htriplet {-m, -s, -z, -p} TRIPLET|noarch-OS-SYS
+    Usage: htriplet {-m, -s} TRIPLET|noarch-OS-SYS
     
-    Print machine (-m) system (-s) archive format (-z) and preferred
-    prefix (-p) of the tripplet.
+    Print machine (-m) system (-s).
 
 i686-w64-mingw32-env
 
@@ -322,6 +321,32 @@ lsetup-gcc-musl
      ... i-libfts   : Install libfts.
     
     Once compiled use 'hcross -t x86_64-linux-musl'.
+
+make-h-release
+
+    Usage: make-h-release ...
+    
+    Add "release" target to GNUmakefile that uses "htoolchain" that
+    uploads built tars/zips to github.
+    
+      makefile    Print 'Makefile'.
+      gitignore   Print '.gitignore'.
+    
+    You should add "TOOLCHAINS" variable to the makefile manually, for
+    example: x86_64-w64-mingw32 x86_64-linux-musl
+
+relctl
+
+    Usage: relctl { -V | ... }
+    
+    Organize software build and release with "RELCTL.lst".
+    
+    ... help             : Print help on "RELCTL.lst" format.
+    ... ls               : List packages.
+    ... [build] [PKG...] : List and build packages.
+    ... upload  [PKG...] : List and upload built packages.
+    
+    Environment variable: RELEASE_DIR
 
 sysroot-fix
 

@@ -34,8 +34,9 @@ install-sh:
 	install -c -m 755 bin/hrelease $(DESTDIR)$(PREFIX)/bin
 	install -c -m 755 bin/htriplet $(DESTDIR)$(PREFIX)/bin
 	install -c -m 755 bin/make-h-release $(DESTDIR)$(PREFIX)/bin
-        ifeq($(UNAME_S),Linux)
-	  install -c -m 755 bin/lsetup-gcc-glibc $(DESTDIR)$(PREFIX)/bin
-	  install -c -m 755 bin/lsetup-gcc-musl $(DESTDIR)$(PREFIX)/bin
-        endif
+	install -c -m 755 bin/relctl $(DESTDIR)$(PREFIX)/bin
+       ifeq($(UNAME_S),Linux)
+	install -c -m 755 bin/lsetup-gcc-glibc $(DESTDIR)$(PREFIX)/bin
+	install -c -m 755 bin/lsetup-gcc-musl $(DESTDIR)$(PREFIX)/bin
+       endif
 ## -- BLOCK:sh --
