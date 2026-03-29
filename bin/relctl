@@ -2,9 +2,9 @@
 ##:
 #h: Usage: relctl { -V | ... }
 #h:
-#h: Organize software build and release with "RELCTL.lst".
+#h: Organize software build and release with the "RELCTL" file.
 #h:
-#h: ... help             : Print help on "RELCTL.lst" format.
+#h: ... help             : Print help on "RELCTL" format.
 #h: ... ls               : List packages.
 #h: ... [build] [PKG...] : List and build packages.
 #h: ... upload  [PKG...] : List and upload built packages.
@@ -25,14 +25,14 @@ relctl() {
 # --------------------------------------------------------------------
 relctl_help() {
     ${PAGER_MARKDOWN:-cat} <<-EOF
-	## RELCTL.lst
+	## RELCTL
 	
 	The file follows the following format:
 	
 	    R ; <release-site> ; <upload-command>
 	    E ; <shell-code>
 	    E ; ...
-	    P ; <package> ; <version> ; <release-site> ; <description> ; <command>
+	    P ; <package> ; <version>|-|repo ; <release-site> ; <description> ; <command>
 	    P ; ...
 	
 	On the upload command the following variables are available.
@@ -71,8 +71,20 @@ relctl_build() {
     while IFS=';' read -r pkg version repo desc command; do
         test @"${pkg}" = @"${pkg_sel}" || continue
         pkg_dir="${RELEASE_DIR}/relpkg/${repo}"
-        pkg_lst="${pkg_dir}/${pkg}-${version}.lst"
-        pkg_txt="${pkg_dir}/${pkg}-${version}.txt"
+        case "${version}" in
+            -)
+                pkg_lst="${pkg_dir}/${pkg}.lst"
+                pkg_txt="${pkg_dir}/${pkg}.txt"
+                ;;
+            repo)
+                pkg_lst="${pkg_dir}/${repo}.lst"
+                pkg_txt="${pkg_dir}/${repo}.txt"
+                ;;
+            *)
+                pkg_lst="${pkg_dir}/${pkg}-${version}.lst"
+                pkg_txt="${pkg_dir}/${pkg}-${version}.txt"
+                ;;
+        esac
         mkdir -p "${pkg_dir}"
         rm -f "${pkg_lst}"
         env RELEASE_LIST="${pkg_lst}" GETSRC_FORCE=y sh -ec "
@@ -80,7 +92,9 @@ relctl_build() {
             ${command_pre}
             ${command}
         "
-        if test @"${desc}" = @"-"; then
+        if test @"${version}" = @"repo"; then
+            echo -n "Last update: $(date)" > "${pkg_txt}"
+        elif test @"${desc}" = @"-"; then
             echo -n '' > "${pkg_txt}"
         else
             echo "${desc}" > "${pkg_txt}"
