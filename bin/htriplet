@@ -20,6 +20,7 @@ htriplet() {
         noarch)      system="";;
         gcc|msvc|'') system="$(uname -s)";;
         *-linux-*)   system="Linux";;
+        *-linux)     system="Linux";;
         *-mingw*)    system="Windows_NT";;
         *) echo >&2 "error: $1: Unknown machine."; return 1;;
     esac
