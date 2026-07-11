@@ -19,11 +19,11 @@ hgmake() {
     for t in ${targets:-all}; do
         echo ""
         case "${t}" in
-            clean)   hgmake_clean   "$@"        ;;
-            all)     hgmake_build   "$@"        ;;
-            install) hgmake_install "$@"        ;;
-            options) hgmake_options "$@"        ;;
-            *)       hgmake_build   "${t}" "$@" ;;
+            clean)    hgmake_clean   "$@"        ;;
+            all)      hgmake_build   "$@"        ;;
+            install*) hgmake_install "$@"        ;;
+            options)  hgmake_options "$@"        ;;
+            *)        hgmake_build   "${t}" "$@" ;;
         esac
         echo ""
     done
@@ -37,7 +37,8 @@ hgmake_clean() {
         "$@"
 }
 hgmake_build() {
-    hgmake_vrun                                              \
+    hgmake_vrun                                                            \
+        ${HGMAKE_FORCE_SUDO:+${HBUILD_SUDO:-sudo -n } env PATH="${PATH}" } \
         ${MAKE:-make}                                        \
         CC="${CC:-gcc} ${CFLAGS} ${CPPFLAGS} ${LDFLAGS}"     \
         CXX="${CXX:-g++} ${CXXFLAGS} ${CPPFLAGS} ${LDFLAGS}" \
@@ -50,9 +51,10 @@ hgmake_build() {
 }
 hgmake_install() {
     hgmake_vrun \
-        ${HBUILD_SUDO:-sudo}                   \
+        ${HBUILD_SUDO:-sudo -n }               \
+        env PATH="${PATH}"                     \
         ${MAKE:-make}                          \
-        CC=false CXX=false AR=false LD=false   \
+        ${HGMAKE_SKIPS:- CC=false CXX=false AR=false LD=false }   \
         ${EXE:+ EXE="${EXE}" }                 \
         PREFIX="${HBUILD_PREFIX:-/usr/local}"  \
         DESTDIR="${HBUILD_DESTDIR}"            \

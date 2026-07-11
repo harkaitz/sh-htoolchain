@@ -1,6 +1,6 @@
 #!/bin/sh -e
 ##:
-#h: Usage: lsetup-gcc-musl ...
+#h: Usage: i-lang-c-gcc-musl ...
 #h:
 #h: This program helps building a GCC/MUSL toolchain in /opt/musl.
 #h:
@@ -54,13 +54,13 @@ tc_gcc_musl_show_variables() {
 }
 tc_gcc_musl_calc_variables() {
     ## URLS
-    MUSL_CROSS_URL="${MUSL_CROSS_URL:-https://github.com/richfelker/musl-cross-make.git,master}"
-    LIBFTS_GIT_URL="${LIBFTS_GIT_URL:-https://github.com/pullmoll/musl-fts.git}"
+    : ${MUSL_CROSS_URL:=https://github.com/richfelker/musl-cross-make.git,master}
+    : ${LIBFTS_GIT_URL:=https://github.com/pullmoll/musl-fts.git}
     ## DIRECTORIES
-    MUSL_TARGET="${MUSL_TARGET:-x86_64-linux-musl}"
-    MUSL_TOOLDIR="${MUSL_TOOLDIR:-/compiler}"
-    MUSL_SYSROOT="${MUSL_SYSROOT:-${MUSL_TOOLDIR}/${MUSL_TARGET}}"
-    MUSL_SCRDIR="${MUSL_SCRDIR:-/usr/local/bin}"
+    : ${MUSL_TARGET:=x86_64-linux-musl}
+    : ${MUSL_TOOLDIR:=/compiler}
+    : ${MUSL_SYSROOT:=${MUSL_TOOLDIR}/${MUSL_TARGET}}
+    : ${MUSL_SCRDIR:=/usr/local/bin}
 }
 ## -------------------------------------------------------------------
 musl_remove() {
@@ -224,4 +224,4 @@ musl_all() {
 }
 ## -------------------------------------------------------------------
 tc_gcc_musl_calc_variables
-hmain -f "lsetup-gcc-musl" tc_gcc_musl "$@"
+hmain -f "i-lang-c-gcc-musl" tc_gcc_musl "$@"

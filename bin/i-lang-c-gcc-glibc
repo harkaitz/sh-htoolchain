@@ -1,6 +1,6 @@
 #!/bin/sh -e
 ##:
-#h: Usage: lsetup-gcc-glibc ...
+#h: Usage: i-lang-c-gcc-glibc ...
 #h:
 #h: Build a C/C++ compiler the CLFS way.
 #h:
@@ -61,12 +61,12 @@ tc_gcc_glibc_show_variables() {
 	EOF
 }
 tc_gcc_glibc_calc_variables() {
-    CLFS_TARGET="${CLFS_TARGET:-x86_64-ht-linux-gnu}"
-    CLFS_TOOLDIR="${CLFS_TOOLDIR:-/compiler}"
-    CLFS_SYSROOT="${CLFS_SYSROOT:-/compiler/${CLFS_TARGET}}"
-    CLFS_ENV_SCRIPT="${CLFS_ENV_SCRIPT:-/usr/local/bin/${CLFS_TARGET}-env}"
-    CLFS_GLIBC_MINIMAL="${CLFS_GLIBC_MINIMAL:-2.11}"
-    GETSRC_FORCE="${GETSRC_FORCE:-${FORCE:+y}}"
+    : ${CLFS_TARGET:=x86_64-ht-linux-gnu}
+    : ${CLFS_TOOLDIR:=/compiler}
+    : ${CLFS_SYSROOT:=/compiler/${CLFS_TARGET}}
+    : ${CLFS_ENV_SCRIPT:=/usr/local/bin/${CLFS_TARGET}-env}
+    : ${CLFS_GLIBC_MINIMAL:=2.11}
+    : ${GETSRC_FORCE:=${FORCE:+y}}
     export PATH="${CLFS_TOOLDIR}/bin:${PATH}"
 }
 tc_gcc_glibc_check_environment() {
@@ -369,4 +369,4 @@ clfs_script() {
 	EOF
 }
 ## -------------------------------------------------------------------
-hmain -f "lsetup-gcc-glibc" -C tc_gcc_glibc "$@"
+hmain -f "i-lang-c-gcc-glibc" -C tc_gcc_glibc "$@"

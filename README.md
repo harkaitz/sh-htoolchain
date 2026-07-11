@@ -129,14 +129,6 @@ You can write them manually:
 - *LT_SYS_LIBRARY_PATH* : Search path for libtool. Put */lib*s here.
 - *ACLOCAL_PATH* : Search path for aclocal. Put */share/aclocal* here.
 
-## Collaborating
-
-Feel free to open bug reports and feature/pull requests.
-
-More software like this here:
-
-1. [https://harkadev.com/prj/](https://harkadev.com/prj/)
-2. [https://devreal.org](https://devreal.org)
 ## Help
 
 aarch64-linux-gnu-env
@@ -272,18 +264,9 @@ htriplet
 i686-w64-mingw32-env
 
 
-img2tar
+i-lang-c-gcc-glibc
 
-    Usage: img2tar [-o TARFILE][-n PARTITION] DISK
-    
-    From an image "DISK" get partition "PARTITION" and create
-    a tar file.
-    
-    Requires: mount/umount/losetup/tar/fdisk/tar
-
-lsetup-gcc-glibc
-
-    Usage: lsetup-gcc-glibc ...
+    Usage: i-lang-c-gcc-glibc ...
     
     Build a C/C++ compiler the CLFS way.
     
@@ -302,9 +285,9 @@ lsetup-gcc-glibc
     
     Once compiled use 'hcross -t x86_64-ht-linux-gnu' to compile.
 
-lsetup-gcc-musl
+i-lang-c-gcc-musl
 
-    Usage: lsetup-gcc-musl ...
+    Usage: i-lang-c-gcc-musl ...
     
     This program helps building a GCC/MUSL toolchain in /opt/musl.
     
@@ -321,6 +304,15 @@ lsetup-gcc-musl
      ... i-libfts   : Install libfts.
     
     Once compiled use 'hcross -t x86_64-linux-musl'.
+
+img2tar
+
+    Usage: img2tar [-o TARFILE][-n PARTITION] DISK
+    
+    From an image "DISK" get partition "PARTITION" and create
+    a tar file.
+    
+    Requires: mount/umount/losetup/tar/fdisk/tar
 
 make-h-release
 
@@ -339,9 +331,9 @@ relctl
 
     Usage: relctl { -V | ... }
     
-    Organize software build and release with "RELCTL.lst".
+    Organize software build and release with the "RELCTL" file.
     
-    ... help             : Print help on "RELCTL.lst" format.
+    ... help             : Print help on "RELCTL" format.
     ... ls               : List packages.
     ... [build] [PKG...] : List and build packages.
     ... upload  [PKG...] : List and upload built packages.
@@ -371,4 +363,13 @@ x86_64-linux-gnu-env
 
 x86_64-w64-mingw32-env
 
+
+## Collaborating
+
+Feel free to open bug reports and feature/pull requests.
+
+More software like this here:
+
+1. [https://harkadev.com/prj/](https://harkadev.com/prj/)
+2. [https://devreal.org](https://devreal.org)
 

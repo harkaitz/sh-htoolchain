@@ -1,9 +1,11 @@
+.POSIX: # POSIX Makefile, use make,gmake,pdpmake,bmake
 PROJECT=sh-htoolchain
 VERSION=1.0.0
 PREFIX=/usr/local
 all:
 clean:
 install:
+check:
 
 ## -- BLOCK:license --
 install: install-license
@@ -33,10 +35,8 @@ install-sh:
 	install -c -m 755 bin/i686-w64-mingw32-env $(DESTDIR)$(PREFIX)/bin
 	install -c -m 755 bin/hrelease $(DESTDIR)$(PREFIX)/bin
 	install -c -m 755 bin/htriplet $(DESTDIR)$(PREFIX)/bin
+	install -c -m 755 bin/i-lang-c-gcc-glibc $(DESTDIR)$(PREFIX)/bin
 	install -c -m 755 bin/make-h-release $(DESTDIR)$(PREFIX)/bin
 	install -c -m 755 bin/relctl $(DESTDIR)$(PREFIX)/bin
-       ifeq($(UNAME_S),Linux)
-	install -c -m 755 bin/lsetup-gcc-glibc $(DESTDIR)$(PREFIX)/bin
-	install -c -m 755 bin/lsetup-gcc-musl $(DESTDIR)$(PREFIX)/bin
-       endif
+	install -c -m 755 bin/i-lang-c-gcc-musl $(DESTDIR)$(PREFIX)/bin
 ## -- BLOCK:sh --
