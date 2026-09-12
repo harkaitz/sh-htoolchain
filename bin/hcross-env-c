@@ -186,8 +186,11 @@ hcross_env_c() {
             for d in "${p}/lib64" "${p}/lib"; do
                 if test -d "${d}"; then
                    case "${type}" in
-                       clang|tcc) export LDFLAGS="${LDFLAGS} -L${d}"                 ;;
-                       gnu)       export LDFLAGS="${LDFLAGS} -Wl,-rpath,${d} -L${d}" ;;
+                       clang|tcc) export LDFLAGS="${LDFLAGS} -L${d}"          ;;
+                       gnu)       export LDFLAGS="${LDFLAGS} -Wl,-rpath,${d}"
+                                  export CC="${CC} -Wl,-rpath,${d}"
+                                  export CXX="${CXX} -Wl,-rpath,${d}"
+                                  ;;
                    esac
                 fi
             done

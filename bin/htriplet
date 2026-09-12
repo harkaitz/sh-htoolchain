@@ -1,6 +1,6 @@
 #!/bin/sh -e
 ##:
-#h: Usage: htriplet {-m, -s} TRIPLET|noarch-OS-SYS
+#h: Usage: htriplet {-m, -s, -a} TRIPLET|noarch-OS-SYS
 #h:
 #h: Print machine (-m) system (-s).
 ##:
@@ -24,14 +24,16 @@ htriplet() {
         *-mingw*)    system="Windows_NT";;
         *) echo >&2 "error: $1: Unknown machine."; return 1;;
     esac
-    case "${opts}" in -*m*) echo "${machine}";; esac
-    case "${opts}" in -*s*) echo "${system}" ;; esac
-    case "${opts}" in -*z*) echo "${archive}";; esac
+    case "${opts}" in -a)    echo "${system}-${machine}"; return 0;; esac
+    case "${opts}" in -*m*)  echo "${machine}";; esac
+    case "${opts}" in -*s*)  echo "${system}" ;; esac
+    case "${opts}" in -*z*)  echo "${archive}";; esac
 }
 # --------------------------------------------------------------------
-if test @"${SCRNAME:-$(basename "$0")}" = @"htriplet"; then
+if test @"${0##*/}" = @"htriplet"; then
     case "${1}" in
         ''|-h|--help) sed -n 's/^ *#h: \{0,1\}//p' "$0";;
-        *)            htriplet "$@"; exit 0;;
+        *)            htriplet "$@";;
     esac
+    exit 0
 fi

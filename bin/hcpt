@@ -1,0 +1,203 @@
+#!/bin/sh -e
+##:
+#h: Usage: hcpt [-t TOOLCHAIN][-d][-r SSH] { help | init | bootstrap | ... }
+#h:
+#h: Execute cpt(1) package manager commands on cross environments.
+##:
+hcpt() {
+    local OPTIND=1 optopt target= ssh= opt_i= cmd tar
+    local h_uname t_uname t_type host
+    local type=libs
+    
+    # Parse command line arguments.
+    while getopts "t:dr:" optopt; do # OPTARG
+        case $optopt in
+            t)  target="${OPTARG}";;
+            d)  type=dist;;
+            r)  ssh="${OPTARG}" type=dist;;
+            \?) return 1;;
+        esac
+    done
+    shift $(( $OPTIND - 1 ))
+    if test @"${target}" = @"l"; then
+        hcross -t l
+        return 0
+    fi
+    if test @"${1:-help}" = @"help"; then
+        cpt
+        echo "-> init           Set native target."
+        echo "-> bootstrap SSH  Install cpt."
+        echo ""
+        echo "hcpt -t ${target:-TARGET} ..."
+        return 0
+    fi
+    cmd="$1"
+    shift
+    case "${cmd}" in
+        i) cmd=install;;
+    esac
+    
+
+    # Bootstrap.
+    if test @"${cmd}" = @"bootstrap"; then
+        hcpt_bootstrap "$@"
+        return 0
+    fi
+    
+    # Get the host.
+    if test @"${cmd}" = @"init"; then
+        if test ! -n "${1}"; then
+            hcross -t l >&2 || true
+            echo "error: Please specify the target." >&2
+            return 1
+        fi
+        ssh_run "${ssh}" "echo '${1}' > ~/.hcpt_target"
+        return 0
+    else
+        host="$(ssh_run "${ssh}" 'cat ~/.hcpt_target' || true)"
+        if test ! -n "${host}"; then
+            echo "error: Please set host target with: init TARGET" >&2
+            return 1
+        fi
+    fi
+
+    # Get the target.
+    : ${target:=${host}}
+    
+    # When installing 'dist' both $host and $target must match.
+    if test   @"${cmd}"  = @"install" && \
+       test   @"${type}" = @"dist"    && \
+       test ! @"${host}" = @"${target}"
+    then
+        echo "error: I will not install '${target}' package in a '${host}'." >&2
+        return 1
+    fi
+
+    # Calculate variables.
+    local cpt_cache="${HCPT_DIR}/${type}/${target}"
+    if test @"${type}" = @"dist"; then
+        local prefix=/usr/local
+    else
+        local prefix=
+    fi
+
+    # List available packages.
+    if test @"${cmd}" = @"install" && test ! -n "$1"; then
+        mkdir -p "${cpt_cache}/cpt/bin"
+        find "${cpt_cache}/cpt/bin" -type f -name '*.tar.gz' | sed '
+            s|.*/||
+            s|\#.*||
+        ' | sort -u
+        return 0
+    fi
+    
+    
+    # Remote install.
+    if test @"${cmd}" = @"install" && test -n "${ssh}"; then
+        tar="$(tar_search "$1")"
+        if test ! -n "${tar}"; then
+            echo "error: Package not found." >&2
+            return 1
+        fi
+        echo "== ${ssh} : scp, cpt install -f '/tmp/${tar##*/}'"
+        scp "${tar}" "${ssh}":"/tmp/${tar##*/}"
+        ssh "${ssh}" "cpt install -f '/tmp/${tar##*/}'"
+        return 0
+    fi
+
+    # Remote other.
+    if test -n "${ssh}"; then
+        case "${cmd}" in
+            alternatives|list|remove)
+                echo "== ${ssh} : cpt ${cmd} $*"
+                ssh "${ssh}" "cpt ${cmd} $*"
+                return 0
+                ;;
+        esac
+    fi
+
+    # Execute cpt.
+    env CPT_CACHE="${cpt_cache}"    \
+        hcross                      \
+        -t "${target}"              \
+        ${prefix:+ -p "${prefix}" } \
+        cpt                         \
+        "${cmd}"                    \
+        "$@"
+}
+hcpt_show_variables() {
+    cat <<-EOF
+	HCPT_DIR : ${HCPT_DIR}
+	EOF
+}
+hcpt_calc_variables() {
+    : ${HCPT_DIR:=${HOME}/.hcpt}
+}
+# --------------------------------------------------------------------
+hcpt_bootstrap() {
+    ssh_run "$1" '
+        set -e
+
+        if test -w /usr/local; then
+            SUDO=
+        else
+            SUDO="sudo -n"
+        fi
+
+        if test -f /usr/bin/xbps-install; then
+            $SUDO xbps-install -Sy pax make b3sum
+        fi
+
+        cd /tmp
+        mkdir -p "$(whoami)"
+        cd "$(whoami)"
+
+        u=https://fossil.carbslinux.org/cpt/uv/cpt-7.0.2.tar.xz
+        t="${u##*/}"
+        d="${t%.tar.*}"
+        if test ! -f "${d}"/configure; then
+            if test ! -f "${t}"; then
+                curl -L -o "$t.tmp" "$u"
+                mv "$t.tmp" "$t"
+            fi
+            tar xf "$t"
+        fi
+        cd "$d"
+        ./configure --prefix=/usr/local --with-docs=no
+        make all
+        $SUDO make install
+    '
+}
+
+ssh_run() {
+    local m="$1"
+    shift
+    case "${m}" in
+        '')  sh -ec "$*";;
+        *)   ssh "${m}" "$*";;
+    esac
+}
+tar_search() {
+    local tar ver
+    find "${cpt_cache}/cpt/bin" -type f -name "${1}#*.tar.gz" | while read -r tar; do
+        ver="${tar##*-}"
+        ver="${ver%.tar.gz}"
+        printf '%03i %s\n' "${ver}" "${tar}"
+    done | sort -r | head -n 1 | awk '{print $2}'
+}
+
+
+# --------------------------------------------------------------------
+hcpt_calc_variables
+if test @"${0##*/}" = @"hcpt"; then
+    export MSYS_NO_PATHCONV=1
+    case "${1}" in
+        -h|--help) sed -n 's/^ *#h: \{0,1\}//p' "$0";;
+        *)         hcpt "$@";;
+    esac
+    exit 0
+elif test -n "${1}"; then
+    export HBUILD_DESTDIR="${1}"
+    export HBUILD_SUDO=env
+    export HBUILD_PREFIX="${HBUILD_PREFIX:-/usr/local}"
+fi
